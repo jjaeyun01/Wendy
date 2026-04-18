@@ -1,82 +1,61 @@
 #!/bin/bash
 
 # ─────────────────────────────────────────
-#  WENDY - Aerospace Scene Launcher
-#  Workspace 1 layout mirrors config.json → profiles → dev-mode → layout.arrange
+#  WENDY - Workspace Launcher
+#  Reads settings from settings.json
 # ─────────────────────────────────────────
 
-YOUTUBE_URL="https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SETTINGS="$SCRIPT_DIR/settings.json"
 
-# Bundle IDs (same as dev-mode in config.json)
-CURSOR_BUNDLE="com.todesktop.230313mzl4w4u92"
-TERMINAL_BUNDLE="com.apple.Terminal"
-FINDER_BUNDLE="com.apple.finder"
+# ── Show splash screen ──────────────────
+python3 "$SCRIPT_DIR/splash.py"
 
-# Seconds between launching apps (windows need time before arrange)
-APP_LAUNCH_GAP="0.8"
-PRE_ARRANGE_PAUSE="1"
+# ── Check settings.json exists ──────────
+if [ ! -f "$SETTINGS" ]; then
+  echo "  ✗ settings.json not found. Run the config screen first."
+  exit 1
+fi
 
-focus_first_window_in_ws1() {
-  local bundle_id="$1"
-  local attempt=0
-  local max=30
-  local wid
-
-  while (( attempt < max )); do
-    wid=$(aerospace list-windows --workspace 1 --app-bundle-id "$bundle_id" --json 2>/dev/null | python3 -c "
-import json, sys
-try:
-    data = json.load(sys.stdin)
-    if data:
-        print(data[0]['window-id'], end='')
-except Exception:
-    pass
-")
-    if [[ -n "$wid" ]]; then
-      aerospace focus --window-id "$wid"
-      return 0
-    fi
-    sleep 0.2
-    ((attempt++))
-  done
-
-  echo "⚠️  Wendy: no window found for $bundle_id on workspace 1" >&2
-  return 1
+# ── Parse settings.json ─────────────────
+parse() {
+  python3 -c "import json,sys; d=json.load(open('$SETTINGS')); print($1)"
 }
 
-arrange_dev_workspace() {
-  # Layout: Cursor (left) | Finder (top right) / Terminal (bottom right)
-  focus_first_window_in_ws1 "$CURSOR_BUNDLE" || return 1
-  aerospace layout h_tiles
-  aerospace move left; aerospace move left   # push Cursor to far left
+YOUTUBE_URL=$(parse "d['youtube_url']")
+BROWSER=$(parse "d['browser']")
+WS_DEV=$(parse "d['workspace_dev']")
+WS_MEDIA=$(parse "d['workspace_media']")
+TRIGGER=$(parse "d['trigger']")
+APPS=$(parse "' '.join(d['apps'])")
 
-  focus_first_window_in_ws1 "$TERMINAL_BUNDLE" || return 1
-  aerospace move right; aerospace move right  # push Terminal to far right
+echo "  ✦ Wendy is starting up..."
+echo "  ✦ Dev workspace  → $WS_DEV"
+echo "  ✦ Media workspace → $WS_MEDIA"
+echo "  ✦ Browser        → $BROWSER"
+echo "  ✦ Trigger        → $TRIGGER"
+echo ""
 
-  # Now order is [Cursor | Finder | Terminal]
-  # Terminal joins Finder → sub-container [Finder | Terminal]
-  aerospace join-with left
-  # Stack vertically: Finder on top, Terminal on bottom
-  aerospace layout v_tiles
-}
+# ── Workspace 1: Dev apps ───────────────
+echo "  ⬤  Switching to workspace $WS_DEV..."
+aerospace workspace "$WS_DEV"
+sleep 0.5
 
-echo "🤖 Wendy: Starting YouTube on workspace 9..."
-aerospace workspace 9
-open -a "Firefox" "$YOUTUBE_URL"
+for APP in $APPS; do
+  echo "  ⬤  Opening $APP..."
+  open -a "$APP"
+  sleep 0.5
+done
 
-echo "🤖 Wendy: Setting up workspace 1..."
-aerospace workspace 1
+# ── Workspace media: YouTube ────────────
+echo ""
+echo "  ⬤  Switching to workspace $WS_MEDIA..."
+sleep 1
+aerospace workspace "$WS_MEDIA"
 
-open -n /Applications/Cursor.app
-sleep "$APP_LAUNCH_GAP"
-open -n /System/Applications/Utilities/Terminal.app
-sleep "$APP_LAUNCH_GAP"
-# Finder is always running; open a fresh window via AppleScript
-osascript -e 'tell application "Finder" to make new Finder window'
-sleep "$APP_LAUNCH_GAP"
+echo "  ⬤  Opening $BROWSER → YouTube..."
+open -a "$BROWSER" "$YOUTUBE_URL"
 
-echo "🤖 Wendy: Arranging windows..."
-sleep "$PRE_ARRANGE_PAUSE"
-arrange_dev_workspace
-
-echo "✅ Wendy: All done!"
+echo ""
+echo "  ✓  Wendy is all set. Good luck."
+echo ""

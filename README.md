@@ -1,11 +1,12 @@
 # 🤖 Wendy
+
 > Your personal Jarvis — clap twice, and Wendy sets up your entire workspace automatically.
 
 ---
 
 ## What is Wendy?
 
-Wendy is a Mac automation assistant that watches for two claps via your webcam and instantly launches your development environment. It opens Cursor, Terminal, and Finder on your first Aerospace workspace, and plays a YouTube video on a second workspace — all hands-free.
+Wendy is a Mac automation assistant that listens for two claps via your microphone and instantly launches your development environment. It opens your chosen apps on your dev Aerospace workspace, and plays a YouTube video in your browser on a second workspace — all hands-free. Everything is configured via a `settings.json` file.
 
 ---
 
@@ -13,15 +14,16 @@ Wendy is a Mac automation assistant that watches for two claps via your webcam a
 
 ```
 wendy/
-├── main.sh                  # Entry point — orchestrates everything
-├── config.json              # Settings: YouTube URL, workspace IDs, app names
+├── wendy.sh                 # Entry point — reads settings.json and launches everything
+├── splash.py                # Terminal splash screen shown on startup
+├── settings.json            # Generated config: YouTube URL, workspaces, apps, browser
 │
 ├── listeners/
-│   └── clap_detector.py     # Webcam input → detects 2 claps → triggers main.sh
+│   └── clap_detector.py     # Mic input → detects 2 claps → triggers wendy.sh
 │
 ├── scenes/
-│   ├── workspace1.sh        # Opens Cursor, Terminal, and Finder on space 1
-│   └── workspace2.sh        # Opens YouTube video on space 2
+│   ├── workspace1.sh        # Opens dev apps on workspace 1
+│   └── workspace9.sh        # Opens YouTube in Firefox on workspace 9
 │
 ├── utils/
 │   ├── aerospace.sh         # Aerospace workspace helper functions
@@ -35,25 +37,27 @@ wendy/
 ## How It Works
 
 ```
-Webcam
+Microphone
    └── clap_detector.py
-         └── sees 2 claps
-               └── main.sh
-                     ├── workspace1.sh → Cursor + Terminal + Finder
-                     └── workspace2.sh → YouTube video
+         └── hears 2 claps
+               └── wendy.sh
+                     ├── reads settings.json
+                     ├── shows splash.py
+                     ├── workspace 1 → Cursor + Terminal + Finder
+                     └── workspace 9 → YouTube in Firefox
 ```
 
 ---
 
 ## Trigger Options
 
-Wendy is triggered by a **double clap** detected via your Mac's webcam using hand gesture recognition. MediaPipe tracks both hands in real time and detects when they come together twice within ~0.8 seconds.
+Wendy is triggered by a **double clap** detected via your Mac's microphone. The clap detector listens for two short loud audio spikes within ~1.2 seconds of each other, with debouncing and a cooldown to prevent false triggers.
 
-A **keyboard hotkey fallback** is also recommended for low-light environments.
+A **keyboard hotkey fallback** is also recommended for noisy environments.
 
 | Method | Pros | Cons |
 |---|---|---|
-| 📷 Webcam / Clap Detection | Hands-free, cool factor | Needs decent lighting |
+| 🎤 Mic / Clap Detection | Hands-free, cool factor | Can false-trigger in noisy rooms |
 | ⌨️ Hotkey | Reliable, zero false positives | Less hands-free |
 | 🖱️ Mouse Gesture | No accidental triggers | Must be at desk |
 | 📱 iPhone Shortcut | Works from across the room | Extra setup required |
@@ -66,11 +70,36 @@ A **keyboard hotkey fallback** is also recommended for low-light environments.
 ## Tech Stack
 
 - **Shell (Bash)** — workspace launching and app control
-- **Python** — clap detection via webcam and hand gesture recognition
+- **Python** — splash screen and clap/audio detection via microphone
 - **Aerospace** — macOS tiling window manager for workspace switching
-- `mediapipe` — real-time hand landmark detection
-- `opencv-python` — webcam stream processing
-- `numpy` — coordinate distance calculation
+- `sounddevice` — real-time microphone input
+- `numpy` — audio amplitude spike detection
+
+---
+
+## Configuration
+
+Wendy reads all settings from `settings.json` at launch. Generate this file using the Wendy config screen, or edit it manually:
+
+```json
+{
+  "youtube_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
+  "browser": "Firefox",
+  "workspace_dev": 1,
+  "workspace_media": 9,
+  "apps": ["Cursor", "Terminal", "Finder"],
+  "trigger": "clap"
+}
+```
+
+| Key | Description |
+|---|---|
+| `youtube_url` | The YouTube link to open on launch |
+| `browser` | Browser app name (Firefox, Safari, Arc, etc.) |
+| `workspace_dev` | Aerospace workspace number for dev apps |
+| `workspace_media` | Aerospace workspace number for YouTube |
+| `apps` | List of macOS app names to open on the dev workspace |
+| `trigger` | `clap`, `hotkey`, or `both` |
 
 ---
 
@@ -79,39 +108,46 @@ A **keyboard hotkey fallback** is also recommended for low-light environments.
 ### 1. Install dependencies
 
 ```bash
-pip install mediapipe opencv-python numpy
+pip install -r requirements.txt
 ```
 
 ### 2. Make scripts executable
 
 ```bash
-chmod +x main.sh scenes/workspace1.sh scenes/workspace2.sh
+chmod +x wendy.sh scenes/workspace1.sh scenes/workspace9.sh
 ```
 
 ### 3. Configure Wendy
 
-Edit `config.json` to set your YouTube URL and workspace IDs:
+Use the config screen to generate `settings.json`, or edit it manually (see above).
 
-```json
-{
-  "youtube_url": "https://www.youtube.com/watch?v=YOUR_VIDEO",
-  "workspace_dev": 1,
-  "workspace_media": 2
-}
-```
+### 4. Grant microphone permission
 
-### 4. Grant camera permission
+Make sure your terminal app has microphone access:
 
-Make sure your terminal app has camera access:
-**System Settings → Privacy & Security → Camera → enable for Terminal**
+**System Settings → Privacy & Security → Microphone → enable for Terminal**
 
 ### 5. Run Wendy
 
 ```bash
-python listeners/clap_detector.py
+python3 listeners/clap_detector.py
 ```
 
-Then clap twice in front of your webcam — Wendy will handle the rest.
+Then clap twice — Wendy will show the splash screen and handle the rest.
+
+---
+
+## Clap Detector Settings
+
+You can tune the detector in `listeners/clap_detector.py`:
+
+| Variable | Default | Description |
+|---|---|---|
+| `THRESHOLD` | `0.25` | Amplitude level to count as a clap (0.0–1.0) |
+| `CLAP_WINDOW` | `1.2s` | Max time between clap 1 and clap 2 |
+| `COOLDOWN` | `3.0s` | Ignore period after a successful trigger |
+
+If Wendy triggers too easily, raise `THRESHOLD`. If she misses claps, lower it.
 
 ---
 
@@ -119,10 +155,9 @@ Then clap twice in front of your webcam — Wendy will handle the rest.
 
 - macOS
 - [Aerospace](https://github.com/nikitabobko/AeroSpace) window manager installed and configured
-- Cursor, Terminal, Finder (standard macOS apps)
-- Python 3.8+
 - `aerospace` CLI available in your PATH (check with `which aerospace`)
-- Webcam (built-in or external)
+- Python 3.8+
+- Cursor, Terminal, Finder (or any apps listed in `settings.json`)
 
 ---
 
