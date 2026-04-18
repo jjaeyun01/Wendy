@@ -1,12 +1,11 @@
 # 🤖 Wendy
-
 > Your personal Jarvis — clap twice, and Wendy sets up your entire workspace automatically.
 
 ---
 
 ## What is Wendy?
 
-Wendy is a Mac automation assistant that listens for two claps and instantly launches your development environment. It opens Cursor, Terminal, and Finder on your first Aerospace workspace, and plays a YouTube video on a second workspace — all hands-free.
+Wendy is a Mac automation assistant that watches for two claps via your webcam and instantly launches your development environment. It opens Cursor, Terminal, and Finder on your first Aerospace workspace, and plays a YouTube video on a second workspace — all hands-free.
 
 ---
 
@@ -18,7 +17,7 @@ wendy/
 ├── config.json              # Settings: YouTube URL, workspace IDs, app names
 │
 ├── listeners/
-│   └── clap_detector.py     # Mic input → detects 2 claps → triggers main.sh
+│   └── clap_detector.py     # Webcam input → detects 2 claps → triggers main.sh
 │
 ├── scenes/
 │   ├── workspace1.sh        # Opens Cursor, Terminal, and Finder on space 1
@@ -36,9 +35,9 @@ wendy/
 ## How It Works
 
 ```
-Microphone
+Webcam
    └── clap_detector.py
-         └── hears 2 claps
+         └── sees 2 claps
                └── main.sh
                      ├── workspace1.sh → Cursor + Terminal + Finder
                      └── workspace2.sh → YouTube video
@@ -48,13 +47,13 @@ Microphone
 
 ## Trigger Options
 
-Wendy is triggered by a **double clap** detected via your Mac's microphone. The clap detector listens for two short loud audio spikes within ~0.5 seconds of each other.
+Wendy is triggered by a **double clap** detected via your Mac's webcam using hand gesture recognition. MediaPipe tracks both hands in real time and detects when they come together twice within ~0.8 seconds.
 
-A **keyboard hotkey fallback** is also recommended for noisy environments.
+A **keyboard hotkey fallback** is also recommended for low-light environments.
 
 | Method | Pros | Cons |
 |---|---|---|
-| 🎤 Mic / Clap Detection | Hands-free, cool factor | Can false-trigger in noisy rooms |
+| 📷 Webcam / Clap Detection | Hands-free, cool factor | Needs decent lighting |
 | ⌨️ Hotkey | Reliable, zero false positives | Less hands-free |
 | 🖱️ Mouse Gesture | No accidental triggers | Must be at desk |
 | 📱 iPhone Shortcut | Works from across the room | Extra setup required |
@@ -67,10 +66,11 @@ A **keyboard hotkey fallback** is also recommended for noisy environments.
 ## Tech Stack
 
 - **Shell (Bash)** — workspace launching and app control
-- **Python** — clap/audio detection via microphone
+- **Python** — clap detection via webcam and hand gesture recognition
 - **Aerospace** — macOS tiling window manager for workspace switching
-- `sounddevice` — real-time microphone input
-- `numpy` — audio spike detection
+- `mediapipe` — real-time hand landmark detection
+- `opencv-python` — webcam stream processing
+- `numpy` — coordinate distance calculation
 
 ---
 
@@ -79,7 +79,7 @@ A **keyboard hotkey fallback** is also recommended for noisy environments.
 ### 1. Install dependencies
 
 ```bash
-pip install sounddevice numpy
+pip install mediapipe opencv-python numpy
 ```
 
 ### 2. Make scripts executable
@@ -100,13 +100,18 @@ Edit `config.json` to set your YouTube URL and workspace IDs:
 }
 ```
 
-### 4. Run Wendy
+### 4. Grant camera permission
+
+Make sure your terminal app has camera access:
+**System Settings → Privacy & Security → Camera → enable for Terminal**
+
+### 5. Run Wendy
 
 ```bash
 python listeners/clap_detector.py
 ```
 
-Then clap twice — Wendy will handle the rest.
+Then clap twice in front of your webcam — Wendy will handle the rest.
 
 ---
 
@@ -117,6 +122,7 @@ Then clap twice — Wendy will handle the rest.
 - Cursor, Terminal, Finder (standard macOS apps)
 - Python 3.8+
 - `aerospace` CLI available in your PATH (check with `which aerospace`)
+- Webcam (built-in or external)
 
 ---
 
