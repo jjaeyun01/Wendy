@@ -1,0 +1,8 @@
+{
+  "youtube_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
+  "browser": "Firefox",
+  "workspace_dev": 1,
+  "workspace_media": 9,
+  "apps": ["Cursor", "Terminal", "Finder"],
+  "trigger": "clap"
+}
