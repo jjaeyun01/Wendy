@@ -14,8 +14,8 @@
       "bundle_id": "org.mozilla.firefox"
     },
     "notes": {
-      "name": "Obsidian",
-      "bundle_id": "md.obsidian"
+      "name": "Minecraft",
+      "bundle_id": "com.mojang.minecraftlauncher"
     },
     "terminal": {
       "name": "Terminal",
@@ -36,33 +36,20 @@
           "music_url": ""
         },
         "3": {
-          "apps": [
-            "ide"
-          ],
+          "apps": [],
           "browser_url": "",
           "music_url": ""
         },
         "9": {
-          "apps": [
-            "music",
-            "notes",
-            "terminal"
-          ],
-          "browser_url": "",
-          "music_url": "https://www.youtube.com/watch?v=-85-sjG_BiQ&list=RD-85-sjG_BiQ&start_radio=1",
-          "layout": {
-            "n": 3,
-            "id": 1,
-            "slots": {
-              "A": "music",
-              "B": "notes",
-              "C": "terminal"
-            }
-          }
-        },
-        "4": {
           "apps": [],
           "browser_url": "",
+          "music_url": ""
+        },
+        "4": {
+          "apps": [
+            "browser"
+          ],
+          "browser_url": "https://comic.naver.com/index",
           "music_url": ""
         },
         "5": {
@@ -81,7 +68,7 @@
           "music_url": ""
         }
       },
-      "final_workspace": "1",
+      "final_workspace": "4",
       "final_workspace_step": "Layouts"
     }
   },

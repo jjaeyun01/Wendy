@@ -107,7 +107,7 @@ def _ensure_bundle_on_workspace(workspace: str, bundle_id: str, cmd_delay: float
 
     print(f"     open bundle: {bundle_id}")
     subprocess.run(["open", "-b", bundle_id], cwd=str(ROOT))
-    time.sleep(cmd_delay + 0.5)  # extra wait so windows land in A→B→C order
+    time.sleep(cmd_delay)
 
 
 def _open_music_url(url: str) -> None:
@@ -130,6 +130,14 @@ def _apply_workspace(workspace: str, ws_data: dict, settings: dict, cmd_delay: f
         bundle_id = _get_bundle_id(settings, app_key)
         print(f"     app: {app_key} → {bundle_id or '(no bundle id)'}")
         _ensure_bundle_on_workspace(workspace, bundle_id, cmd_delay)
+
+    # Open browser URL if present
+    browser_url = ws_data.get("browser_url", "").strip()
+    if browser_url:
+        browser_bundle = _get_bundle_id(settings, "browser")
+        print(f"     browser: → {browser_url[:72]}{'…' if len(browser_url) > 72 else ''}")
+        subprocess.Popen(["open", "-b", browser_bundle, browser_url], cwd=str(ROOT), start_new_session=True)
+        time.sleep(1.0)
 
     # Open music URL if present
     music_url = ws_data.get("music_url", "").strip()
