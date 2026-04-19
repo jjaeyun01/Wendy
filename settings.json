@@ -13,17 +13,17 @@
         "1": {
           "apps": [
             "browser",
-            "ide",
+            "notes",
             "terminal"
           ],
           "browser_url": "https://github.com/twoSquaredHoon?tab=repositories",
           "music_url": "",
           "layout": {
             "n": 3,
-            "id": 1,
+            "id": 2,
             "slots": {
               "A": "browser",
-              "B": "ide",
+              "B": "notes",
               "C": "terminal"
             }
           }
