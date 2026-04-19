@@ -2,7 +2,7 @@ import curses
 import json
 import os
 from pathlib import Path
-from palette import make_palette
+from config.palette import make_palette
 
 os.environ.setdefault("ESCDELAY", "0")
 
