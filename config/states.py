@@ -165,12 +165,10 @@ def _run_workspaces(stdscr, color_mode, state_name, p, safe, draw_header) -> boo
             "↑↓←→ navigate   enter open   esc back",
         )
 
-        safe(3, 4, "workspaces", p["DIM"])
-
         for i, ws_id in enumerate(WORKSPACE_IDS):
             col = i % COLS
             row_n = i // COLS
-            y = 5 + row_n * 2
+            y = 3 + row_n * 2
             x = 4 + col * 5
 
             has_apps = bool(workspaces.get(ws_id, {}).get("apps"))
