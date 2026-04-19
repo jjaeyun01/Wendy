@@ -1,8 +1,8 @@
 {
     "version": "1.0.0",
     "settings": {
-      "clap_threshold": 0.3,
-      "clap_interval_ms": 800,
+      "clap_threshold": 0.05,
+      "clap_interval_ms": 1500,
       "camera_index": 0,
       "cooldown_ms": 20000,
       "post_trigger_guard_sec": 25,

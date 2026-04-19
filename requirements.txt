@@ -1,4 +1,6 @@
 sounddevice
 numpy
-mediapipe
 opencv-python
+vosk
+torch          # CNN clap classifier (ml/)
+# mediapipe   # broken on Python 3.13 — motion_detector.py needs Python ≤3.12

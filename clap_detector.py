@@ -19,6 +19,21 @@ from pathlib import Path
 import numpy as np
 import sounddevice as sd
 
+# ── Optional CNN classifier (loads lazily on first audio block) ──────────────
+_cnn: "object | None | bool" = None  # None=not tried, False=unavailable, obj=ready
+
+def _get_cnn():
+    global _cnn
+    if _cnn is not None:
+        return _cnn if _cnn is not False else None
+    try:
+        from ml.clap_cnn import ClapCNNClassifier
+        clf = ClapCNNClassifier.load()
+        _cnn = clf if clf is not None else False
+    except Exception:
+        _cnn = False
+    return _cnn if _cnn is not False else None
+
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "config.json"
 STATE_RUNNER = ROOT / "state_runner.py"
@@ -245,6 +260,9 @@ def run_forever(wake=None) -> None:
 
     cam_debug = "--cam-debug" in sys.argv
 
+    # Pre-load CNN at startup (not lazily) so it's ready before first wake word
+    _get_cnn()
+
     visual: VisualClapDetector | None = None
     if require_visual:
         visual = VisualClapDetector(camera_index=cam_idx, near_threshold=visual_dist, debug=cam_debug)
@@ -270,13 +288,12 @@ def run_forever(wake=None) -> None:
 
         # Wake-word gate: ignore claps until "Wendy" has been said
         if wake is not None and not wake.is_armed():
-            if float(np.max(np.abs(indata))) > threshold:
-                print("  🔒 Clap blocked — say 'Wendy' first")
             return
 
         amplitude = float(np.max(np.abs(indata)))
 
-        if amplitude < release_floor:
+        # Release env_high by amplitude OR by time (whichever comes first)
+        if amplitude < release_floor or (env_high and now - last_clap_time > min_gap):
             env_high = False
 
         if amplitude <= threshold:
@@ -285,8 +302,13 @@ def run_forever(wake=None) -> None:
                 clap_count = 0
             return
 
-        # Spectral gate: reject voice/low-freq noise even when loud
-        if not _is_clap_spectrum(indata, sample_rate):
+        # Spectral gate: CNN if trained model available, else FFT rule
+        clf = _get_cnn()
+        if clf is not None:
+            clf.push(indata)
+            if not clf.is_clap():
+                return
+        elif not _is_clap_spectrum(indata, sample_rate):
             return
 
         if env_high:
