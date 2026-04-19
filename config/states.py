@@ -18,7 +18,46 @@ os.environ.setdefault("ESCDELAY", "0")
 CATEGORIES = ["Browser", "IDE", "Music", "Notes", "Terminal"]
 WORKSPACE_IDS = [str(i) for i in range(1, 10)] + [chr(c) for c in range(ord("A"), ord("Z") + 1)]
 
-WORKSPACE_VIEWS = ["Contents", "Layouts", "Set Final Screen"]
+WORKSPACE_STEPS = ["Contents", "Layouts"]
+SET_FINAL_SCREEN_LABEL = "Set Final Screen"
+WORKSPACE_MENU_LABELS = [*WORKSPACE_STEPS, SET_FINAL_SCREEN_LABEL]
+
+
+def _normalize_final_workspace_screen(raw) -> str:
+    if raw == "Contents" or raw == "Layouts":
+        return raw
+    return "Layouts"
+
+
+def _coerce_final_screen_stored(raw) -> str | None:
+    if raw is None:
+        return None
+    if isinstance(raw, str) and not raw.strip():
+        return None
+    if raw == "Contents" or raw == "Layouts":
+        return raw
+    return _normalize_final_workspace_screen(raw)
+
+
+def _final_screen_enter_action(state_name: str, ws_id: str) -> None:
+    """Enter toggles final screen: off → Layouts → off (one Enter to unselect). `Contents` only via settings.json."""
+
+    settings = load_settings()
+    if "states" not in settings:
+        settings["states"] = {}
+    if state_name not in settings["states"]:
+        settings["states"][state_name] = {}
+    st = settings["states"][state_name]
+    if "workspaces" not in st:
+        st["workspaces"] = {}
+    prev = dict(st["workspaces"].get(ws_id, {}))
+    cur = _coerce_final_screen_stored(prev.get("final_workspace_screen"))
+    if cur is None:
+        prev["final_workspace_screen"] = "Layouts"
+    else:
+        prev.pop("final_workspace_screen", None)
+    st["workspaces"][ws_id] = prev
+    save_settings(settings)
 
 
 def run_states(stdscr, color_mode: str) -> bool:
@@ -216,23 +255,31 @@ def _run_workspaces(stdscr, color_mode, state_name, p, safe, draw_header) -> boo
 
 
 def _run_workspace_menu(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) -> bool:
-    """Contents, Layouts, Set Final Screen (alphabetical). Esc returns to grid."""
+    """Contents, Layouts, Set Final Screen (fixed order). Enter cycles final screen. Esc returns to grid."""
     cursor = 0
     changed = False
     while True:
+        settings = load_settings()
+        state = settings.get("states", {}).get(state_name, {})
+        ws_data = state.get("workspaces", {}).get(ws_id, {})
+        menu_labels = WORKSPACE_MENU_LABELS
+
         h, w = stdscr.getmaxyx()
         stdscr.erase()
         draw_header(
             f"states  /  {state_name}  /  {ws_id}",
             "↑↓ navigate   enter open   esc back",
         )
-        for i, label in enumerate(WORKSPACE_VIEWS):
+        for i, label in enumerate(menu_labels):
             row = 3 + i * 2
-            if cursor == i:
-                safe(row, 2, ">", p["RED"])
-                safe(row, 4, label, p["RED"])
-            else:
-                safe(row, 4, label, p["NORM"])
+            is_cursor = i == cursor
+            is_saved = label == SET_FINAL_SCREEN_LABEL and (
+                _coerce_final_screen_stored(ws_data.get("final_workspace_screen")) is not None
+            )
+            attr = p["RED"] if (is_cursor or is_saved) else p["NORM"]
+            cur = ">" if is_cursor else " "
+            safe(row, 2, cur, attr)
+            safe(row, 4, label, attr)
 
         stdscr.refresh()
         key = stdscr.getch()
@@ -240,15 +287,18 @@ def _run_workspace_menu(stdscr, color_mode, state_name, ws_id, p, safe, draw_hea
         if key == curses.KEY_UP:
             cursor = max(0, cursor - 1)
         elif key == curses.KEY_DOWN:
-            cursor = min(len(WORKSPACE_VIEWS) - 1, cursor + 1)
+            cursor = min(len(menu_labels) - 1, cursor + 1)
         elif key in (curses.KEY_ENTER, 10, 13):
-            if WORKSPACE_VIEWS[cursor] == "Layouts":
+            choice = menu_labels[cursor]
+            if choice == SET_FINAL_SCREEN_LABEL:
+                _final_screen_enter_action(state_name, ws_id)
+                changed = True
+            elif choice == "Layouts":
                 if _run_workspace_layouts(stdscr, state_name, ws_id, p, safe, draw_header):
                     changed = True
-            elif WORKSPACE_VIEWS[cursor] == "Contents":
+            elif choice == "Contents":
                 if _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header):
                     changed = True
-            # "Set Final Screen" — intentionally does nothing
         elif key in (ord("q"), 27):
             return changed
 
@@ -508,7 +558,14 @@ def _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) ->
             or browser_url != initial_browser_url
             or music_url != initial_music_url
         )
-        layout_hint = "Esc to save, then update layout in Layouts" if contents_dirty else None
+        if contents_dirty:
+            fin = _coerce_final_screen_stored(ws_data.get("final_workspace_screen"))
+            if fin == "Contents":
+                layout_hint = "Esc to save"
+            else:
+                layout_hint = "Esc to save, then update layout in Layouts"
+        else:
+            layout_hint = None
 
         if url_input:
             safe(bottom_y, count_col, count_str, p["RED"] if len(enabled) >= 4 else p["DIM"])
