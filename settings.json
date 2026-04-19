@@ -15,8 +15,7 @@
             "browser"
           ],
           "browser_url": "https://github.com/jjaeyun01/Wendy",
-          "music_url": "",
-          "final_workspace_screen": "Layouts"
+          "music_url": ""
         },
         "2": {
           "apps": [
@@ -129,7 +128,9 @@
             }
           }
         }
-      }
+      },
+      "final_workspace": "1",
+      "final_workspace_step": "Layouts"
     }
   }
 }

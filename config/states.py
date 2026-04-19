@@ -39,8 +39,45 @@ def _coerce_final_screen_stored(raw) -> str | None:
     return _normalize_final_workspace_screen(raw)
 
 
+def _migrate_legacy_final_workspace_screen(settings: dict, state_name: str) -> None:
+    """One final screen per state: move legacy workspaces[].final_workspace_screen → state.final_workspace + step."""
+
+    st = settings.get("states", {}).get(state_name)
+    if not isinstance(st, dict):
+        return
+    wmap = st.get("workspaces")
+    if not isinstance(wmap, dict):
+        return
+
+    if st.get("final_workspace"):
+        changed = False
+        for wid, wdata in list(wmap.items()):
+            if isinstance(wdata, dict) and "final_workspace_screen" in wdata:
+                nd = dict(wdata)
+                nd.pop("final_workspace_screen", None)
+                wmap[wid] = nd
+                changed = True
+        if changed:
+            save_settings(settings)
+        return
+
+    for wid, wdata in wmap.items():
+        if not isinstance(wdata, dict) or "final_workspace_screen" not in wdata:
+            continue
+        raw = wdata.get("final_workspace_screen")
+        st["final_workspace"] = wid
+        st["final_workspace_step"] = _coerce_final_screen_stored(raw) or "Layouts"
+        for wid2, wd2 in list(wmap.items()):
+            if isinstance(wd2, dict) and "final_workspace_screen" in wd2:
+                nd = dict(wd2)
+                nd.pop("final_workspace_screen", None)
+                wmap[wid2] = nd
+        save_settings(settings)
+        return
+
+
 def _final_screen_enter_action(state_name: str, ws_id: str) -> None:
-    """Enter toggles final screen: off → Layouts → off (one Enter to unselect). `Contents` only via settings.json."""
+    """At most one final workspace per state. Enter: select this ws (replaces any other) or unselect if already set."""
 
     settings = load_settings()
     if "states" not in settings:
@@ -50,13 +87,14 @@ def _final_screen_enter_action(state_name: str, ws_id: str) -> None:
     st = settings["states"][state_name]
     if "workspaces" not in st:
         st["workspaces"] = {}
-    prev = dict(st["workspaces"].get(ws_id, {}))
-    cur = _coerce_final_screen_stored(prev.get("final_workspace_screen"))
-    if cur is None:
-        prev["final_workspace_screen"] = "Layouts"
+
+    cur = st.get("final_workspace")
+    if cur == ws_id:
+        st.pop("final_workspace", None)
+        st.pop("final_workspace_step", None)
     else:
-        prev.pop("final_workspace_screen", None)
-    st["workspaces"][ws_id] = prev
+        st["final_workspace"] = ws_id
+        st["final_workspace_step"] = "Layouts"
     save_settings(settings)
 
 
@@ -194,8 +232,12 @@ def _run_workspaces(stdscr, color_mode, state_name, p, safe, draw_header) -> boo
 
     while True:
         settings = load_settings()
+        _migrate_legacy_final_workspace_screen(settings, state_name)
         state = settings.get("states", {}).get(state_name, {})
         workspaces = state.get("workspaces", {})
+        final_ws = state.get("final_workspace")
+        if final_ws is not None:
+            final_ws = str(final_ws)
 
         h, w = stdscr.getmaxyx()
         stdscr.erase()
@@ -212,11 +254,14 @@ def _run_workspaces(stdscr, color_mode, state_name, p, safe, draw_header) -> boo
 
             has_apps = bool(workspaces.get(ws_id, {}).get("apps"))
             is_cursor = cursor == i
+            is_final = final_ws is not None and final_ws == ws_id
 
             if is_cursor:
                 safe(y, x - 2, ">", p["RED"])
 
             if is_cursor:
+                attr = p["RED"]
+            elif is_final:
                 attr = p["RED"]
             elif has_apps:
                 attr = p["PINK"]
@@ -260,6 +305,7 @@ def _run_workspace_menu(stdscr, color_mode, state_name, ws_id, p, safe, draw_hea
     changed = False
     while True:
         settings = load_settings()
+        _migrate_legacy_final_workspace_screen(settings, state_name)
         state = settings.get("states", {}).get(state_name, {})
         ws_data = state.get("workspaces", {}).get(ws_id, {})
         menu_labels = WORKSPACE_MENU_LABELS
@@ -273,9 +319,7 @@ def _run_workspace_menu(stdscr, color_mode, state_name, ws_id, p, safe, draw_hea
         for i, label in enumerate(menu_labels):
             row = 3 + i * 2
             is_cursor = i == cursor
-            is_saved = label == SET_FINAL_SCREEN_LABEL and (
-                _coerce_final_screen_stored(ws_data.get("final_workspace_screen")) is not None
-            )
+            is_saved = label == SET_FINAL_SCREEN_LABEL and state.get("final_workspace") == ws_id
             attr = p["RED"] if (is_cursor or is_saved) else p["NORM"]
             cur = ">" if is_cursor else " "
             safe(row, 2, cur, attr)
@@ -559,9 +603,13 @@ def _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) ->
             or music_url != initial_music_url
         )
         if contents_dirty:
-            fin = _coerce_final_screen_stored(ws_data.get("final_workspace_screen"))
-            if fin == "Contents":
-                layout_hint = "Esc to save"
+            state_now = settings.get("states", {}).get(state_name, {})
+            if state_now.get("final_workspace") == ws_id:
+                fin = _coerce_final_screen_stored(state_now.get("final_workspace_step"))
+                if fin == "Contents":
+                    layout_hint = "Esc to save"
+                else:
+                    layout_hint = "Esc to save, then update layout in Layouts"
             else:
                 layout_hint = "Esc to save, then update layout in Layouts"
         else:
