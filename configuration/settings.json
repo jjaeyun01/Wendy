@@ -1,11 +1,26 @@
 {
   "color_mode": "dark",
   "apps": {
-    "browser": "Firefox",
-    "ide": "Cursor",
-    "music": "Firefox",
-    "notes": "Obsidian",
-    "terminal": "Ghostty"
+    "browser": {
+      "name": "Firefox",
+      "bundle_id": "org.mozilla.firefox"
+    },
+    "ide": {
+      "name": "Cursor",
+      "bundle_id": "com.todesktop.230313mzl4w4u92"
+    },
+    "music": {
+      "name": "Firefox",
+      "bundle_id": "org.mozilla.firefox"
+    },
+    "notes": {
+      "name": "Obsidian",
+      "bundle_id": "md.obsidian"
+    },
+    "terminal": {
+      "name": "Ghostty",
+      "bundle_id": "com.mitchellh.ghostty"
+    }
   },
   "states": {
     "Tony Stark": {

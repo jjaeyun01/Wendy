@@ -1,5 +1,6 @@
 import curses
 import os
+import plistlib
 from pathlib import Path
 from config.palette import make_palette
 from config.settings_store import load_settings, save_settings
@@ -22,20 +23,35 @@ CATEGORY_HINTS = {
     "Terminal": ["terminal", "iterm", "iterm2", "warp", "alacritty", "kitty", "hyper", "ghostty"],
 }
 
+SEARCH_DIRS = [
+    Path("/Applications"),
+    Path("/System/Applications"),
+    Path("/System/Applications/Utilities"),
+    Path.home() / "Applications",
+]
+
+
 def get_applications() -> list[str]:
     apps = set()
-    search_dirs = [
-        Path("/Applications"),
-        Path("/System/Applications"),
-        Path("/System/Applications/Utilities"),
-        Path.home() / "Applications",
-    ]
-    for app_dir in search_dirs:
+    for app_dir in SEARCH_DIRS:
         if app_dir.exists():
             for path in app_dir.iterdir():
                 if path.suffix == ".app":
                     apps.add(path.name[:-4])
     return sorted(apps, key=lambda x: x.lower())
+
+
+def get_bundle_id(app_name: str) -> str:
+    for d in SEARCH_DIRS:
+        plist = d / f"{app_name}.app" / "Contents" / "Info.plist"
+        if plist.exists():
+            try:
+                with open(plist, "rb") as f:
+                    data = plistlib.load(f)
+                return data.get("CFBundleIdentifier", "")
+            except Exception:
+                return ""
+    return ""
 
 
 def filter_apps(all_apps: list[str], category: str) -> list[str]:
@@ -88,8 +104,9 @@ def run_apps(stdscr, color_mode: str) -> bool:
 
         for i, cat in enumerate(CATEGORIES):
             row = 3 + i * 2
-            current = settings.get("apps", {}).get(cat.lower(), "")
-            suffix = f"  {current}" if current else ""
+            current = settings.get("apps", {}).get(cat.lower(), {})
+            display = current.get("name", "") if isinstance(current, dict) else current
+            suffix = f"  {display}" if display else ""
             if cursor == i:
                 safe(row, 2, ">", p["RED"])
                 safe(row, 4, cat, p["RED"])
@@ -148,7 +165,12 @@ def run_apps(stdscr, color_mode: str) -> bool:
                     if filtered:
                         if "apps" not in settings:
                             settings["apps"] = {}
-                        settings["apps"][chosen_cat.lower()] = filtered[app_cursor]
+                        app_name = filtered[app_cursor]
+                        bundle_id = get_bundle_id(app_name)
+                        settings["apps"][chosen_cat.lower()] = {
+                            "name": app_name,
+                            "bundle_id": bundle_id,
+                        }
                         save_settings(settings)
                         changed = True
                     break
