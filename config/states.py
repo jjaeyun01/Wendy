@@ -1,10 +1,15 @@
 import curses
 import os
 
-from config.layout1 import pick_layout_1
-from config.layout2 import assign_slots_ab, pick_layout_2
-from config.layout3 import assign_slots_abc, pick_layout_3
-from config.layout4 import assign_slots_abcd, pick_layout_4
+from config.layout import (
+    assign_slots_ab,
+    assign_slots_abc,
+    assign_slots_abcd,
+    pick_layout_1,
+    pick_layout_2,
+    pick_layout_3,
+    pick_layout_4,
+)
 from config.palette import make_palette
 from config.settings_store import load_settings, save_settings
 
@@ -13,47 +18,7 @@ os.environ.setdefault("ESCDELAY", "0")
 CATEGORIES = ["Browser", "IDE", "Music", "Notes", "Terminal"]
 WORKSPACE_IDS = [str(i) for i in range(1, 10)] + [chr(c) for c in range(ord("A"), ord("Z") + 1)]
 
-# ── Layout pickers: layout2–4 assign region slots; layout1 is tile + auto A: from Contents. ─
-
-def _layout_notice_for_contents(ws: dict, enabled: set[str]) -> str | None:
-    """
-    If the current toggle state no longer matches the saved layout on disk, return a
-    short hint for the bottom-left of the Contents screen (Layouts must be revisited).
-    """
-    lay = ws.get("layout") or {}
-    if not lay:
-        return None
-    prev_n = lay.get("n")
-    n = len(enabled)
-    if prev_n is not None and n != prev_n:
-        return "layouts: app count changed — open Layouts"
-    if prev_n == 3 and n == 3:
-        sl = lay.get("slots")
-        slots_ok = isinstance(sl, dict) and set(sl.values()) == enabled
-        if slots_ok:
-            return None
-        return "layouts: A/B/C outdated — open Layouts"
-    if prev_n == 2 and n == 2:
-        if set(ws.get("apps") or []) != enabled:
-            return "layouts: contents changed — open Layouts"
-        sl = lay.get("slots")
-        slots_ok = isinstance(sl, dict) and set(sl.values()) == enabled
-        if slots_ok:
-            return None
-        return "layouts: A/B outdated — open Layouts"
-    if prev_n == 4 and n == 4:
-        if set(ws.get("apps") or []) != enabled:
-            return "layouts: contents changed — open Layouts"
-        sl = lay.get("slots")
-        slots_ok = isinstance(sl, dict) and set(sl.values()) == enabled
-        if slots_ok:
-            return None
-        return "layouts: A/B/C/D outdated — open Layouts"
-    if prev_n == 1 and n == 1:
-        if set(ws.get("apps") or []) != enabled:
-            return "layouts: contents changed — open Layouts"
-    return None
-
+# ── Layout UI: config/layout.py (pick_layout_1–4, assign_slots_*). ─
 
 # After picking a workspace: alphabetical — Contents (app toggles + URLs), Layouts (tile picker).
 WORKSPACE_VIEWS = ["Contents", "Layouts"]
@@ -498,6 +463,9 @@ def _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) ->
     enabled = set(ws_data.get("apps", []))
     browser_url = ws_data.get("browser_url", "")
     music_url = ws_data.get("music_url", "")
+    initial_apps = set(enabled)
+    initial_browser_url = browser_url
+    initial_music_url = music_url
     cursor = 0
     url_input = False
     url_buf = ""
@@ -543,17 +511,33 @@ def _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) ->
                     safe(row, 4 + len(cat), f"  {url_display}", p["DIM"])
 
         count_str = f"{len(enabled)}/4"
-        safe(h - 1, w - len(count_str) - 1, count_str, p["RED"] if len(enabled) >= 4 else p["DIM"])
+        count_col = w - len(count_str) - 1
+        bottom_y = h - 1
+
+        contents_dirty = (
+            enabled != initial_apps
+            or browser_url != initial_browser_url
+            or music_url != initial_music_url
+        )
+        layout_hint = "Esc to save, then update layout in Layouts" if contents_dirty else None
 
         if url_input:
-            safe(h - 1, 0, "url: " + url_buf + "█", p["PINK"])
+            safe(bottom_y, count_col, count_str, p["RED"] if len(enabled) >= 4 else p["DIM"])
+            safe(bottom_y, 0, "url: " + url_buf + "█", p["PINK"])
         else:
-            notice = _layout_notice_for_contents(ws_data, enabled)
-            if notice:
-                max_w = max(8, w - len(count_str) - 2)
-                if len(notice) > max_w:
-                    notice = notice[: max_w - 3] + "..."
-                safe(h - 1, 0, notice, p["DIM"])
+            safe(
+                bottom_y,
+                count_col,
+                count_str,
+                p["RED"] if len(enabled) >= 4 else p["DIM"],
+            )
+            if layout_hint:
+                left_max = max(0, count_col - 1)
+                if left_max > 0:
+                    text = layout_hint
+                    if len(text) > left_max:
+                        text = text[: max(0, left_max - 3)] + "..."
+                    safe(bottom_y, 0, text, p["PINK"])
 
         stdscr.refresh()
         key = stdscr.getch()
@@ -608,35 +592,32 @@ def _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) ->
                 if "workspaces" not in settings["states"][state_name]:
                     settings["states"][state_name]["workspaces"] = {}
                 existing_ws = settings["states"][state_name]["workspaces"].get(ws_id, {})
-                ws_block = {
-                    "apps": sorted(enabled),
-                    "browser_url": browser_url,
-                    "music_url": music_url,
-                }
-                if len(enabled) == 3:
-                    ex_layout = existing_ws.get("layout") or {}
-                    if ex_layout.get("n") == 3:
-                        sl = ex_layout.get("slots")
-                        if isinstance(sl, dict) and set(sl.values()) == set(enabled):
-                            ws_block["layout"] = ex_layout
-                        elif ex_layout.get("id") is not None:
-                            ws_block["layout"] = {"n": 3, "id": ex_layout["id"]}
-                if len(enabled) == 2:
-                    ex_layout = existing_ws.get("layout") or {}
-                    if ex_layout.get("n") == 2:
-                        sl = ex_layout.get("slots")
-                        if isinstance(sl, dict) and set(sl.values()) == set(enabled):
-                            ws_block["layout"] = ex_layout
-                        elif ex_layout.get("id") is not None:
-                            ws_block["layout"] = {"n": 2, "id": ex_layout["id"]}
-                if len(enabled) == 4:
-                    ex_layout = existing_ws.get("layout") or {}
-                    if ex_layout.get("n") == 4:
-                        sl = ex_layout.get("slots")
-                        if isinstance(sl, dict) and set(sl.values()) == set(enabled):
-                            ws_block["layout"] = ex_layout
-                        elif ex_layout.get("id") is not None:
-                            ws_block["layout"] = {"n": 4, "id": ex_layout["id"]}
+                ws_block = {**existing_ws}
+                ws_block["apps"] = sorted(enabled)
+                ws_block["browser_url"] = browser_url
+                ws_block["music_url"] = music_url
+
+                n_apps = len(enabled)
+                ex_layout = existing_ws.get("layout") or {}
+                ln = ex_layout.get("n")
+                if n_apps == 0 or not ex_layout:
+                    ws_block.pop("layout", None)
+                elif ln != n_apps:
+                    ws_block.pop("layout", None)
+                elif n_apps == 1:
+                    if ex_layout.get("id") is not None:
+                        ws_block["layout"] = {"n": 1, "id": ex_layout["id"]}
+                    else:
+                        ws_block.pop("layout", None)
+                else:
+                    sl = ex_layout.get("slots")
+                    if isinstance(sl, dict) and set(sl.values()) == set(enabled):
+                        ws_block["layout"] = ex_layout
+                    elif ex_layout.get("id") is not None:
+                        ws_block["layout"] = {"n": n_apps, "id": ex_layout["id"]}
+                    else:
+                        ws_block.pop("layout", None)
+
                 settings["states"][state_name]["workspaces"][ws_id] = ws_block
                 save_settings(settings)
                 break
