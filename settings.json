@@ -34,6 +34,39 @@
           ],
           "browser_url": "",
           "music_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1"
+        },
+        "2": {
+          "apps": [
+            "ide"
+          ],
+          "browser_url": "",
+          "music_url": ""
+        },
+        "3": {
+          "apps": [
+            "browser",
+            "ide"
+          ],
+          "browser_url": "Region A  which content?",
+          "music_url": "",
+          "layout": {
+            "n": 2,
+            "id": 1
+          }
+        },
+        "4": {
+          "apps": [
+            "browser",
+            "ide",
+            "music",
+            "notes"
+          ],
+          "browser_url": "Region A  which content?",
+          "music_url": "Region A  which content?",
+          "layout": {
+            "n": 4,
+            "id": 1
+          }
         }
       }
     },

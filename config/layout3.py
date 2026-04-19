@@ -6,17 +6,18 @@ UI matches patterns in config/states.py: passed-in palette, safe, draw_header.
 import curses
 import os
 
+from config.layout_common import cat_label
+
 os.environ.setdefault("ESCDELAY", "0")
 
 # ── Three equal regions A, B, C — ids unique within n=3 ───────────────────────
 
-TAG_ABC = ["A: content", "B: content", "C: content"]
+TAG_PLACEHOLDER = ["A: —", "B: —", "C: —"]
 
 LAYOUTS_3 = [
     {
         "id": 1,
         "name": "Equal Thirds",
-        "tag_lines": TAG_ABC,
         "art": [
             "+--------+-------+--------+",
             "|        |       |        |",
@@ -30,7 +31,6 @@ LAYOUTS_3 = [
     {
         "id": 2,
         "name": "Side + Stacked",
-        "tag_lines": TAG_ABC,
         "art": [
             "+------------+------------+",
             "|            |     B      |",
@@ -44,7 +44,6 @@ LAYOUTS_3 = [
     {
         "id": 3,
         "name": "Stacked + Side",
-        "tag_lines": TAG_ABC,
         "art": [
             "+------------+------------+",
             "|     B      |            |",
@@ -58,12 +57,48 @@ LAYOUTS_3 = [
 ]
 
 
-def pick_layout_3(stdscr, p, safe, draw_header, header_title: str) -> int | None:
+def _abc_tag_lines(
+    slots: dict[str, str] | None,
+    apps: list[str] | None,
+) -> list[str]:
+    """Right-hand legend: A/B/C → category names from saved slots when valid."""
+    if not slots or not all(k in slots for k in ("A", "B", "C")):
+        return list(TAG_PLACEHOLDER)
+    if apps is not None and len(apps) == 3 and set(slots.values()) != set(apps):
+        return list(TAG_PLACEHOLDER)
+    return [
+        f"A: {cat_label(slots['A'])}",
+        f"B: {cat_label(slots['B'])}",
+        f"C: {cat_label(slots['C'])}",
+    ]
+
+
+def pick_layout_3(
+    stdscr,
+    p,
+    safe,
+    draw_header,
+    header_title: str,
+    *,
+    current_layout_id: int | None = None,
+    cursor_start_id: int | None = None,
+    slots: dict[str, str] | None = None,
+    apps: list[str] | None = None,
+) -> int | None:
     """
     List three layout options with ASCII preview. Return layout id (1–3), or None on esc.
+
+    current_layout_id — saved layout for this workspace (row stays RED).
+    cursor_start_id — which layout id to start the cursor on; defaults to current_layout_id.
     """
     layouts = LAYOUTS_3
     selected = 0
+    start_id = cursor_start_id if cursor_start_id is not None else current_layout_id
+    if start_id is not None:
+        for i, lo in enumerate(layouts):
+            if lo["id"] == start_id:
+                selected = i
+                break
 
     while True:
         _, w = stdscr.getmaxyx()
@@ -72,9 +107,15 @@ def pick_layout_3(stdscr, p, safe, draw_header, header_title: str) -> int | None
 
         for i, layout in enumerate(layouts):
             row = 3 + i * 2
-            is_sel = i == selected
-            cur = ">" if is_sel else " "
-            attr = p["RED"] if is_sel else p["NORM"]
+            is_cursor = i == selected
+            is_saved = current_layout_id is not None and layout["id"] == current_layout_id
+            cur = ">" if is_cursor else " "
+            if is_cursor:
+                attr = p["RED"]
+            elif is_saved:
+                attr = p["RED"]
+            else:
+                attr = p["NORM"]
             safe(row, 2, cur, attr)
             safe(row, 4, f"{layout['id']:02d}  {layout['name']}", attr)
 
@@ -87,7 +128,7 @@ def pick_layout_3(stdscr, p, safe, draw_header, header_title: str) -> int | None
         for j, line in enumerate(art):
             safe(art_row + j, art_col, line, p["RED"])
 
-        tag_lines = layout.get("tag_lines") or []
+        tag_lines = _abc_tag_lines(slots, apps)
         if tag_lines:
             max_tag_len = max(len(t) for t in tag_lines)
             gap = 2
@@ -117,16 +158,6 @@ def pick_layout_3(stdscr, p, safe, draw_header, header_title: str) -> int | None
             return layouts[selected]["id"]
 
 
-def _cat_label(key: str) -> str:
-    return {
-        "browser": "Browser",
-        "ide": "IDE",
-        "music": "Music",
-        "notes": "Notes",
-        "terminal": "Terminal",
-    }.get(key, key.replace("_", " ").title())
-
-
 def _pick_slot(
     stdscr,
     p,
@@ -146,7 +177,7 @@ def _pick_slot(
         draw_header(header_title, "↑↓ navigate   enter select   esc back")
         for i, opt in enumerate(options):
             row = 3 + i * 2
-            label = _cat_label(opt)
+            label = cat_label(opt)
             is_sel = i == cursor
             cur = ">" if is_sel else " "
             attr = p["RED"] if is_sel else p["NORM"]
@@ -196,7 +227,11 @@ def assign_slots_abc(
         all_done = all(s in assigned for s in slots)
 
         stdscr.erase()
-        hint = "enter select   esc back" if not all_done else "enter confirm   esc back"
+        hint = (
+            "enter select   esc layout"
+            if not all_done
+            else "enter confirm   esc layout"
+        )
         draw_header(header_base, hint)
 
         for i, letter in enumerate(slots):
@@ -204,7 +239,7 @@ def assign_slots_abc(
             is_sel = i == cursor
             cur = ">" if is_sel else " "
             attr = p["RED"] if is_sel else p["NORM"]
-            value = _cat_label(assigned[letter]) if letter in assigned else "—"
+            value = cat_label(assigned[letter]) if letter in assigned else "—"
             # dim C slot until auto-assigned
             val_attr = p["DIM"] if letter == "C" and "C" not in assigned else p["NORM"]
             if is_sel:
