@@ -1,8 +1,8 @@
 import curses
 import random
 import os
-from colorpicker import pick_color_mode
-from palette import make_palette
+from config.colorpicker import pick_color_mode
+from config.palette import make_palette
 
 os.environ.setdefault("ESCDELAY", "0")
 
@@ -102,7 +102,7 @@ def run(stdscr):
         elif key in (curses.KEY_ENTER, 10, 13):
             selected = MENU_ITEMS[cursor]
             if selected == "States":
-                from states import run_states
+                from config.states import run_states
                 changed = run_states(stdscr, color_mode)
                 p = make_palette(color_mode)
                 if changed:
@@ -112,7 +112,7 @@ def run(stdscr):
                     message = random.choice(JOKES)
                     is_update = False
             elif selected == "Apps":
-                from apps import run_apps
+                from config.apps import run_apps
                 changed = run_apps(stdscr, color_mode)
                 p = make_palette(color_mode)
                 if changed:
@@ -122,7 +122,7 @@ def run(stdscr):
                     message = random.choice(JOKES)
                     is_update = False
             elif selected == "Color Mode":
-                from colormode import run_color_mode
+                from config.colormode import run_color_mode
                 changed = run_color_mode(stdscr, color_mode)
                 if changed:
                     color_mode = "light" if color_mode == "dark" else "dark"

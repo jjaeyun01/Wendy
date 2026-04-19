@@ -14,9 +14,19 @@ Wendy is a Mac automation assistant that listens for two claps via your micropho
 
 ```
 wendy/
-├── wendy.sh                 # Entry point — reads settings.json and launches everything
+├── main.py                  # Entry point — launches the config TUI
 ├── splash.py                # Terminal splash screen shown on startup
+├── wendy.sh                 # Reads settings.json and launches everything
 ├── settings.json            # Generated config: YouTube URL, workspaces, apps, browser
+├── requirements.txt         # Python dependencies
+│
+├── config/                  # Config TUI — all configuration screens
+│   ├── __init__.py
+│   ├── apps.py              # Assign default apps per category
+│   ├── colormode.py         # Switch light / dark mode
+│   ├── colorpicker.py       # Initial color mode picker on first launch
+│   ├── palette.py           # Color definitions — single source of truth
+│   └── states.py            # Manage named workspace states
 │
 ├── listeners/
 │   └── clap_detector.py     # Mic input → detects 2 claps → triggers wendy.sh
@@ -25,11 +35,9 @@ wendy/
 │   ├── workspace1.sh        # Opens dev apps on workspace 1
 │   └── workspace9.sh        # Opens YouTube in Firefox on workspace 9
 │
-├── utils/
-│   ├── aerospace.sh         # Aerospace workspace helper functions
-│   └── notify.sh            # macOS notifications for Wendy feedback
-│
-└── requirements.txt         # Python dependencies
+└── utils/
+    ├── aerospace.sh         # Aerospace workspace helper functions
+    └── notify.sh            # macOS notifications for Wendy feedback
 ```
 
 ---
@@ -70,8 +78,9 @@ A **keyboard hotkey fallback** is also recommended for noisy environments.
 ## Tech Stack
 
 - **Shell (Bash)** — workspace launching and app control
-- **Python** — splash screen and clap/audio detection via microphone
+- **Python** — config TUI, splash screen, and clap/audio detection via microphone
 - **Aerospace** — macOS tiling window manager for workspace switching
+- `curses` — terminal UI for the config screens
 - `sounddevice` — real-time microphone input
 - `numpy` — audio amplitude spike detection
 
@@ -79,26 +88,36 @@ A **keyboard hotkey fallback** is also recommended for noisy environments.
 
 ## Configuration
 
-Wendy reads all settings from `settings.json` at launch. Generate this file using the Wendy config screen, or edit it manually:
+Wendy reads all settings from `settings.json` at launch. Generate this file using the config TUI (`python3 main.py`), or edit it manually:
 
 ```json
 {
-  "youtube_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
+  "color_mode": "dark",
   "browser": "Firefox",
+  "youtube_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
   "workspace_dev": 1,
   "workspace_media": 9,
-  "apps": ["Cursor", "Terminal", "Finder"],
+  "apps": {
+    "browser": "Firefox",
+    "ide": "Cursor",
+    "music": "Spotify",
+    "notes": "Obsidian",
+    "terminal": "Ghostty"
+  },
+  "states": {},
   "trigger": "clap"
 }
 ```
 
 | Key | Description |
 |---|---|
+| `color_mode` | `dark` or `light` — set via the config TUI |
 | `youtube_url` | The YouTube link to open on launch |
 | `browser` | Browser app name (Firefox, Safari, Arc, etc.) |
 | `workspace_dev` | Aerospace workspace number for dev apps |
 | `workspace_media` | Aerospace workspace number for YouTube |
-| `apps` | List of macOS app names to open on the dev workspace |
+| `apps` | Default app per category, set via the config TUI |
+| `states` | Named workspace states (triggers and actions TBD) |
 | `trigger` | `clap`, `hotkey`, or `both` |
 
 ---
@@ -119,7 +138,11 @@ chmod +x wendy.sh scenes/workspace1.sh scenes/workspace9.sh
 
 ### 3. Configure Wendy
 
-Use the config screen to generate `settings.json`, or edit it manually (see above).
+```bash
+python3 main.py
+```
+
+This launches the config TUI where you can set your color mode, default apps, and workspace states. Settings are saved to `settings.json`.
 
 ### 4. Grant microphone permission
 
