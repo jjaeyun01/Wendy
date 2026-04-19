@@ -1,17 +1,74 @@
-# Style guidelines — `config/` Python modules
+# Style & UI conventions — `config/` + hub (`main.py`)
 
-These rules describe how Wendy’s `config` package is written today. New code should follow them; refactors should converge toward them when touched.
+Single reference for **formatting, code layout, shared curses patterns, palette, and hub chrome**. Feature-specific behavior (what data means, business rules) stays in the per-topic docs listed under [Documentation map](#documentation-map).
 
 ---
 
-## Scope
+## Documentation map
 
-| File | Role |
-|------|------|
-| `settings_store.py` | JSON path, load/save, normalization — **no curses** |
-| `palette.py` | `make_palette(color_mode)` — shared terminal colors |
-| `colorpicker.py` | Launch-only light/dark UI — **does not** use `palette` or `settings_store` |
-| `apps.py`, `states.py`, `colormode.py` | Full-screen flows: `make_palette` + optional `settings_store` |
+| Doc | Contents |
+|-----|----------|
+| `documentation/main.md` | `main.py` hub: flow, menu, `settings.json` overview, footer **messages** |
+| `documentation/apps.md` | App categories, discovery, filtering, apps-specific navigation |
+| `documentation/states.md` | State / workspace / URL data and three-level UI **behavior** |
+| `documentation/colorpicker.md` | Launch splash: API, session vs persisted mode |
+| `documentation/colormode.md` | Saving `color_mode` from the hub |
+| `documentation/settings_store.md` | `settings.json` path, canonical keys, `normalize_settings` |
+| `documentation/palette.md` | Pointer — palette API lives **below** in this file |
+
+---
+
+## Global — `main.py` hub
+
+Applies to the **menu loop** in `main.py` (not the `config/` package, but the same visual language).
+
+### Layout
+
+| Row | Content |
+|-----|---------|
+| 0 | `@ WENDY` (`RED`), title `config` (`DIM`, col 9), controls (`PINK`, right-aligned): `↑↓ navigate   enter open   esc quit` |
+| 1 | Full-width `ACS_HLINE` in `RED` via `stdscr.hline` — **never** `safe()` (string clipping breaks line drawing) |
+| 2 | Empty |
+| 3+ | Menu: first item row **3**, step **2** between rows (`3 + i * 2`) |
+| `h-2` | Full-width red `hline` |
+| `h-1` | Footer message |
+
+### Menu rows
+
+- **Selected:** `>` at column **2** (`RED`), label column **4** (`RED`).
+- **Unselected:** label column **4** (`NORM`).
+
+### Footer message styling
+
+| Mode | Template | Attribute |
+|------|------------|-------------|
+| Joke (navigating) | ` '"…"' ` (quotes part of display) | `PINK` |
+| Update | ` … ` (spaces, no decorative quotes) | `NORM` |
+
+After **Apps** or **States**, update style only if the submodule returns `True`. After **Color Mode**, the hub **always** uses update-style text (either “switched” or “same as before”).
+
+### Hub update messages
+
+| Source | Message |
+|--------|---------|
+| Apps — saved | `App preferences updated.` |
+| Apps — no save | new random joke |
+| Color Mode — changed | `Switched to {mode} mode. Good choice.` |
+| Color Mode — unchanged | `Same as before. No judgment.` |
+| States — saved | `States saved.` |
+| States — no save | new random joke |
+
+### `safe()` (hub)
+
+Same rules as in [Nested helpers](#nested-helpers-safe--draw_header): clip to bounds, swallow curses errors; **not** for full-width `hline`.
+
+### Hub keys
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Move cursor; new joke on each move |
+| `enter` | Open selected section |
+| `q` / `esc` | Quit |
 
 ---
 
@@ -19,29 +76,58 @@ These rules describe how Wendy’s `config` package is written today. New code s
 
 1. **Standard library** — `curses`, `json`, `os`, `pathlib`, `random`, `typing` as needed.
 2. **Blank line.**
-3. **Package imports** — `from config.…` (always absolute from project root when running `main.py`).
+3. **Package imports** — `from config.…` (absolute from project root when running `main.py`).
 
-`settings_store.py` may use `from __future__ import annotations` and `typing` for clarity; curses modules stay untyped on `stdscr` unless you add types later.
+`settings_store.py` may use `from __future__ import annotations` and `typing`; curses modules typically leave `stdscr` untyped.
 
 ---
 
 ## Environment
 
-Every **curses** module sets:
+Every **curses** module that handles keys:
 
 ```python
 os.environ.setdefault("ESCDELAY", "0")
 ```
 
-Immediately after imports (before other logic). Skipped only in `palette.py` and `settings_store.py` (no keyboard handling).
+Immediately after imports. Omit in `palette.py` and `settings_store.py`.
 
 ---
 
 ## Persistence
 
-- **`settings.json`** is read and written **only** through `config/settings_store.py` (`load_settings`, `save_settings`).
-- Do not duplicate `Path("settings.json")` or raw `json.dump` in screen modules.
-- After mutations, call `save_settings(settings)` with the same dict you loaded and updated.
+- Read/write **`settings.json`** only through **`config/settings_store.py`** (`load_settings`, `save_settings`).
+- Do not use `Path("settings.json")` ad hoc in screen modules.
+- After edits, `save_settings(settings)` with the dict you loaded and mutated.
+
+Details: `documentation/settings_store.md`.
+
+---
+
+## Palette (`config/palette.py`)
+
+### API
+
+```text
+make_palette(color_mode: str) -> dict[str, ...]
+```
+
+| Key | Role |
+|-----|------|
+| `RED` | Brand — wordmark, dividers, selection (`A_BOLD` + pair 1) |
+| `PINK` | Controls, accents (`A_BOLD` + pair 2) |
+| `NORM` | Default text (pair 3: white-on-dark, black-on-light) |
+| `DIM` | `NORM` + `A_DIM` |
+
+### Implementation
+
+- Calls `curses.start_color()` / `use_default_colors()`.
+- If `curses.can_change_color()`: custom indices **16** (`#832e31`) and **17** (`#df9396`). Else pair 1 → `COLOR_RED`, pair 2 → `COLOR_MAGENTA`.
+- Dark vs light only changes **pair 3** foreground (`NORM`); pairs 1–2 stay defined the same way.
+
+### Consumers
+
+`main.py`, `config/apps.py`, `config/states.py`, `config/colormode.py`. **Not** `config/colorpicker.py` (splash uses its own pairs).
 
 ---
 
@@ -53,52 +139,49 @@ Immediately after imports (before other logic). Skipped only in `palette.py` and
 def run_<name>(stdscr, color_mode: str) -> bool:
 ```
 
-- **`stdscr`** — curses window from `curses.wrapper` / caller.
-- **`color_mode`** — `"dark"` or `"light"` (session + saved preference as applicable).
-- **Return value** — `True` if the user **persisted** a change that matters to the hub footer; `False` if they left without such a change (see each module’s logic).
-
-First lines inside the function:
+- Return **`True`** when a change should drive the hub footer (each module defines when).
+- First lines:
 
 ```python
 curses.curs_set(0)
 p = make_palette(color_mode)
 ```
 
-### Nested helpers (inside `run_*`)
+### Nested helpers (`safe` / `draw_header`)
 
-**`safe(y, x, text, attr=None)`** — clip to terminal, coerce `text` to `str`, default `attr` to `p["NORM"]`, use `attron`/`addstr`/`attroff`, **bare `except:`** only to swallow curses bounds errors. Never use `safe()` for horizontal rules (string slicing breaks box-drawing).
+**`safe(y, x, text, attr=None)`** — coerce `text` to `str`, default `attr` to `p["NORM"]`, clip to terminal, `attron` / `addstr` / `attroff`, bare `except:` for curses errors. **Do not** use for horizontal rules.
 
-**`draw_header(title: str)`** — shared layout:
+**`draw_header(title, controls=...)`** — default controls vary by screen; see below.
 
-| Column / area | Content |
-|---------------|---------|
-| 0 | ` @ WENDY ` in `p["RED"]` |
-| 9 | `title` — usually `p["DIM"]` for list hubs (`apps`, `states`); **`colormode`** uses `p["NORM"]` for the title and swaps control/title styling (see below) |
-| Right | Controls string in `p["PINK"]` (`apps`, `states`) or `p["DIM"]` (`colormode`) |
-| Row 1 | Full-width `p["RED"]` + `curses.ACS_HLINE` via `stdscr.hline` (not `safe`) |
+| Column | Content |
+|--------|---------|
+| 0 | ` @ WENDY ` — `RED` |
+| 9 | `title` — usually `DIM` (`apps`, `states` list); **`colormode`** uses `NORM` for title and `DIM` for controls (inverted vs others) |
+| Right | `controls` — usually `PINK` (`apps`, `states`); **`colormode`**: `DIM` |
+| Row 1 | `hline` + `RED` (not `safe`) |
 
-Controls strings in use:
+Default control strings:
 
 - `↑↓ navigate   enter select   esc back` — `apps`, `colormode`
-- `↑↓ navigate   enter open   esc back` — `states`
+- `↑↓ navigate   enter open   esc back` — `states` list
 
-### List layout
+**`states.py`** overloads `draw_header` with a second argument for workspace / sub-screens (e.g. `↑↓←→ navigate…`, `↑↓ navigate   enter toggle   esc save`).
 
-- First content row: **3**; spacing between rows: **2** (`row = 3 + i * 2`).
-- Selected row: `>` at column **2**, label at column **4**, primary color `p["RED"]`.
-- Scrollable lists: `list_rows = (h - 4) // 2`, adjust `scroll` so the cursor stays visible.
+### List layout (shared)
 
-### Input
+- First content row **3**, row step **2** (`3 + i * 2`).
+- Selected: `>` col **2**, label col **4**, `RED`.
+- Scrollable lists: `list_rows = (h - 4) // 2`, keep cursor in view with a `scroll` index.
 
-| Meaning | Representation |
-|---------|----------------|
+### Input (shared)
+
+| Meaning | Code |
+|---------|------|
 | Enter | `key in (curses.KEY_ENTER, 10, 13)` |
 | Quit / back | `key in (ord("q"), 27)` |
 | Up / down | `curses.KEY_UP` / `curses.KEY_DOWN` |
 
-### Section comments
-
-Major inner loops use a single-line banner:
+### Section banners
 
 ```python
 # ── App picker screen ─────────────────────────────────────────────
@@ -108,62 +191,53 @@ Major inner loops use a single-line banner:
 
 ## `colorpicker.py` (exception)
 
-- Does **not** call `make_palette` or touch `settings_store`; uses its own `init_pair` / pill colors for the splash.
-- Exposes **`pick_color_mode(stdscr)`** returning `"light"` or `"dark"` (no `-> bool`; session-only).
-- Inner `safe` takes **required** `attr` (no default).
-- `cursor` **0 = light**, **1 = dark** (matches `OPTIONS` order).
+- No `make_palette`, no `settings_store`.
+- **`pick_color_mode(stdscr)`** → `"light"` | `"dark"` (session only).
+- Inner **`safe(y, x, text, attr)`** — **`attr` required** (no default).
+- Cursor **0 = LIGHT**, **1 = DARK**.
 
 ---
 
-## `palette.py`
+## `settings_store.py` (code conventions)
 
-- Single export: **`make_palette(color_mode: str)`** returning a `dict` with keys **`RED`**, **`PINK`**, **`NORM`**, **`DIM`**.
-- No `os.environ` / `ESCDELAY`.
-- Keep pair numbers and custom color indices stable unless you intentionally migrate all callers.
-
----
-
-## `settings_store.py`
-
-- **`REPO_ROOT`** derived from `Path(__file__).resolve().parent.parent`.
-- **Constants** in `UPPER_SNAKE` (`SETTINGS_PATH`, `APP_KEYS`).
-- **Private** helpers prefix `_` (`_empty_apps`).
-- **`save_settings`** ends JSON with a **trailing newline** after `indent=2`.
-- Prefer explicit `dict[str, …]` / `Any` where used; keep I/O and normalization in one place.
+- **`REPO_ROOT`** = `Path(__file__).resolve().parent.parent`.
+- Constants: **`UPPER_SNAKE`** (`SETTINGS_PATH`, `APP_KEYS`).
+- Private helpers: **`_` prefix** (`_empty_apps`).
+- **`save_settings`**: JSON `indent=2` and **trailing newline** on the file.
+- Canonical payload and normalization: `documentation/settings_store.md`.
 
 ---
 
 ## Naming
 
-- **`snake_case`** — functions, locals, JSON keys where you control them.
-- **`UPPER_SNAKE`** — module-level constants (`CATEGORIES`, `MODES`, `APP_KEYS`).
-- **Screen runners** — `run_apps`, `run_states`, `run_color_mode` (prefix `run_`).
+- **`snake_case`** — functions, locals, controlled JSON keys.
+- **`UPPER_SNAKE`** — module constants.
+- Screen runners: **`run_apps`**, **`run_states`**, **`run_color_mode`**.
 
 ---
 
-## Formatting
+## Formatting (Python)
 
-- **Two blank lines** between top-level functions and classes (PEP 8).
-- **One blank line** between logical groups inside long functions is fine.
-- **No** heavy docstrings on every helper; a module docstring on `settings_store` is enough unless behavior is non-obvious.
-
----
-
-## Design rules (short)
-
-1. **One settings pipeline** — `settings_store` only.
-2. **One palette for hub-style UIs** — `make_palette` for everything except `colorpicker`.
-3. **Honest `bool` returns** — callers use them for footer messages; don’t save without setting `changed` / equivalent.
-4. **Dividers** — always `hline` with `RED`, never `safe()` for full-width lines.
+- **Two blank lines** between top-level definitions (PEP 8).
+- Avoid heavy docstrings on tiny helpers; module docstring on `settings_store` is enough unless logic is opaque.
 
 ---
 
-## Checklist for a new `config` screen
+## Design rules
 
-- [ ] `os.environ.setdefault("ESCDELAY", "0")` if curses
-- [ ] `run_*(stdscr, color_mode: str) -> bool` (or documented exception like `pick_color_mode`)
-- [ ] `curses.curs_set(0)` and `make_palette` where applicable
-- [ ] `safe` + `draw_header` matching the table above
+1. One settings pipeline — **`settings_store`**.
+2. One shared palette for hub UIs — **`make_palette`**, except **`colorpicker`**.
+3. Honest **`bool`** returns to the hub.
+4. Full-width dividers — **`hline`** + `RED`, never **`safe`**.
+
+---
+
+## Checklist — new `config` screen
+
+- [ ] `ESCDELAY` if handling keys
+- [ ] `run_*(stdscr, color_mode) -> bool` (or documented exception)
+- [ ] `curs_set(0)` + `make_palette` where applicable
+- [ ] `safe` / `draw_header` per tables above
 - [ ] Settings via `load_settings` / `save_settings` only
-- [ ] Enter / Esc / arrows as in the table
-- [ ] List rows from row 3, step 2
+- [ ] Shared input idioms
+- [ ] Lists from row 3, step 2

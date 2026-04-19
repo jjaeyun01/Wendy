@@ -1,45 +1,35 @@
 # Wendy — Settings persistence (`config/settings_store.py`)
 
+**Code conventions (paths, constants, `save_settings` newline, typing):** `documentation/config-style.md` → **`settings_store.py`**.
+
 ## Purpose
 
-Single place for **`settings.json`** location, **normalization** of legacy shapes, and **read/write** used by `config/apps.py`, `config/states.py`, and `config/colormode.py`.
-
----
+Single module for **`settings.json`** path, **normalization**, and **read/write** used by `config/apps.py`, `config/states.py`, and `config/colormode.py`.
 
 ## Path
 
-`SETTINGS_PATH` = **`REPO_ROOT / "settings.json"`**, where `REPO_ROOT` is the parent of the `config/` package (the Wendy project root). This does not depend on the shell’s current working directory.
+`SETTINGS_PATH` = **`REPO_ROOT / "settings.json"`** (`REPO_ROOT` = parent of `config/`). Independent of shell cwd.
 
----
-
-## Canonical JSON shape
-
-Written by `save_settings()`:
+## Canonical JSON (written by `save_settings`)
 
 | Key | Type | Notes |
 |-----|------|--------|
-| `color_mode` | string | `"dark"` or `"light"` (default `"dark"` if missing) |
-| `apps` | object | Keys exactly: `browser`, `ide`, `music`, `notes`, `terminal` — string values (may be empty) |
-| `states` | object | Map of state name → object (often `{}`) |
-
----
+| `color_mode` | string | `"dark"` \| `"light"` (default `"dark"` if missing) |
+| `apps` | object | Keys: `browser`, `ide`, `music`, `notes`, `terminal` (strings, may be empty) |
+| `states` | object | State name → `{ "workspaces": { … } }` — see `documentation/states.md` |
 
 ## `normalize_settings(raw)`
 
-- Ensures `apps` has every `APP_KEYS` entry; fills from nested `apps` dict or from **legacy** top-level `browser`, `ide`, etc.
-- Ignores legacy `apps` when it was a **list** (old format).
-- `states` defaults to `{}`.
-
----
+- Ensures every **`APP_KEYS`** slot exists under **`apps`**; fills from nested **`apps`** or legacy **top-level** `browser`, `ide`, …
+- Ignores legacy **`apps`** when it was a **list**.
+- **`states`** defaults to `{}`.
 
 ## `load_settings()` / `save_settings()`
 
-- **Load** — parses JSON, returns normalized dict; on error or missing file, returns defaults.
-- **Save** — merges through `normalize_settings`, then writes **only** the three canonical keys (no extra keys like `youtube_url`).
+- **Load** — parse JSON, return normalized dict; on error or missing file, return defaults.
+- **Save** — merge through `normalize_settings`, then write **only** the three canonical keys (no passthrough extras like `youtube_url`).
 
----
+## Principles
 
-## Design principles
-
-- **One file, one shape** — avoid drift between modules.
-- **Repo-root file** — predictable location for scripts and the TUI.
+- One file, one shape for the TUI.
+- Repo-root path for predictable tooling.

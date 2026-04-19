@@ -8,7 +8,26 @@
     "terminal": "Terminal"
   },
   "states": {
-    "Tony Stark": {},
+    "Tony Stark": {
+      "workspaces": {
+        "1": {
+          "apps": [
+            "browser",
+            "ide",
+            "terminal"
+          ],
+          "browser_url": "https://github.com/twoSquaredHoon?tab=repositories",
+          "music_url": ""
+        },
+        "9": {
+          "apps": [
+            "music"
+          ],
+          "browser_url": "",
+          "music_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1"
+        }
+      }
+    },
     "too cool for school": {}
   }
 }

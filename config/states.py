@@ -180,18 +180,11 @@ def _run_workspaces(stdscr, color_mode, state_name, p, safe, draw_header) -> boo
 
             safe(y, x, ws_id, attr)
 
-        # Show apps for current workspace at bottom
+        # Show current workspace summary bottom right
         current_ws_id = WORKSPACE_IDS[cursor]
         current_apps = workspaces.get(current_ws_id, {}).get("apps", [])
-        summary = "  ".join(a.capitalize() for a in current_apps) if current_apps else "empty"
-        safe(h - 3, 4, f"{current_ws_id}:  {summary}", p["DIM"])
-
-        try:
-            stdscr.attron(p["RED"])
-            stdscr.hline(h - 2, 0, curses.ACS_HLINE, w - 1)
-            stdscr.attroff(p["RED"])
-        except:
-            pass
+        summary = f"{current_ws_id}:  " + ("  ".join(a.capitalize() for a in current_apps) if current_apps else "empty")
+        safe(h - 1, w - len(summary) - 1, summary, p["DIM"])
 
         stdscr.refresh()
         key = stdscr.getch()
@@ -220,11 +213,24 @@ def _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) ->
     settings = load_settings()
     state = settings.get("states", {}).get(state_name, {})
     workspaces = state.get("workspaces", {})
-    enabled = set(workspaces.get(ws_id, {}).get("apps", []))
+    ws_data = workspaces.get(ws_id, {})
+    enabled = set(ws_data.get("apps", []))
+    browser_url = ws_data.get("browser_url", "")
+    music_url = ws_data.get("music_url", "")
     cursor = 0
+    url_input = False
+    url_buf = ""
+    url_target = None  # "browser" or "music"
+
+    BROWSER_HINTS = ["chrome", "firefox", "safari", "brave", "arc", "edge", "opera", "vivaldi"]
+
+    def music_is_browser(s):
+        app = s.get("apps", {}).get("music", "").lower()
+        return any(h in app for h in BROWSER_HINTS)
 
     while True:
         h, w = stdscr.getmaxyx()
+        settings = load_settings()
         stdscr.erase()
         draw_header(
             f"states  /  {state_name}  /  {ws_id}",
@@ -242,32 +248,81 @@ def _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) ->
             else:
                 safe(row, 4, cat, p["NORM"])
 
+            # Show URL inline after Browser or Music (if music app is a browser)
+            if not url_input:
+                if cat.lower() == "browser" and browser_url:
+                    max_len = w - (4 + len(cat) + 2) - 2
+                    url_display = browser_url if len(browser_url) <= max_len else browser_url[:max_len - 3] + "..."
+                    safe(row, 4 + len(cat), f"  {url_display}", p["DIM"])
+                elif cat.lower() == "music" and music_url and music_is_browser(settings):
+                    max_len = w - (4 + len(cat) + 2) - 2
+                    url_display = music_url if len(music_url) <= max_len else music_url[:max_len - 3] + "..."
+                    safe(row, 4 + len(cat), f"  {url_display}", p["DIM"])
+
+        count_str = f"{len(enabled)}/4"
+        safe(h - 1, w - len(count_str) - 1, count_str, p["RED"] if len(enabled) >= 4 else p["DIM"])
+
+        if url_input:
+            safe(h - 1, 0, "url: " + url_buf + "█", p["PINK"])
+
         stdscr.refresh()
         key = stdscr.getch()
 
-        if key == curses.KEY_UP:
-            cursor = max(0, cursor - 1)
-        elif key == curses.KEY_DOWN:
-            cursor = min(len(CATEGORIES) - 1, cursor + 1)
-        elif key in (curses.KEY_ENTER, 10, 13):
-            cat = CATEGORIES[cursor].lower()
-            if cat in enabled:
-                enabled.discard(cat)
-            else:
-                enabled.add(cat)
-        elif key in (ord("q"), 27):
-            # Save
-            settings = load_settings()
-            if "states" not in settings:
-                settings["states"] = {}
-            if state_name not in settings["states"]:
-                settings["states"][state_name] = {}
-            if "workspaces" not in settings["states"][state_name]:
-                settings["states"][state_name]["workspaces"] = {}
-            settings["states"][state_name]["workspaces"][ws_id] = {
-                "apps": sorted(enabled)
-            }
-            save_settings(settings)
-            break
+        if url_input:
+            if key in (curses.KEY_ENTER, 10, 13):
+                if url_target == "browser":
+                    browser_url = url_buf.strip()
+                elif url_target == "music":
+                    music_url = url_buf.strip()
+                url_input = False
+                url_buf = ""
+                url_target = None
+            elif key == 27:
+                url_input = False
+                url_buf = ""
+                url_target = None
+            elif key in (curses.KEY_BACKSPACE, 127):
+                url_buf = url_buf[:-1]
+            elif 32 <= key <= 126:
+                url_buf += chr(key)
+        else:
+            if key == curses.KEY_UP:
+                cursor = max(0, cursor - 1)
+            elif key == curses.KEY_DOWN:
+                cursor = min(len(CATEGORIES) - 1, cursor + 1)
+            elif key in (curses.KEY_ENTER, 10, 13):
+                cat = CATEGORIES[cursor].lower()
+                if cat in enabled:
+                    enabled.discard(cat)
+                    if cat == "browser":
+                        browser_url = ""
+                    elif cat == "music":
+                        music_url = ""
+                else:
+                    if len(enabled) < 4:
+                        enabled.add(cat)
+                        if cat == "browser":
+                            url_input = True
+                            url_buf = browser_url
+                            url_target = "browser"
+                        elif cat == "music" and music_is_browser(settings):
+                            url_input = True
+                            url_buf = music_url
+                            url_target = "music"
+            elif key in (ord("q"), 27):
+                settings = load_settings()
+                if "states" not in settings:
+                    settings["states"] = {}
+                if state_name not in settings["states"]:
+                    settings["states"][state_name] = {}
+                if "workspaces" not in settings["states"][state_name]:
+                    settings["states"][state_name]["workspaces"] = {}
+                settings["states"][state_name]["workspaces"][ws_id] = {
+                    "apps": sorted(enabled),
+                    "browser_url": browser_url,
+                    "music_url": music_url,
+                }
+                save_settings(settings)
+                break
 
     return True

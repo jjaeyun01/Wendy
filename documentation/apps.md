@@ -1,30 +1,22 @@
-# Wendy — Apps screen (`config/apps.py`)
+# Wendy — Apps (`config/apps.py`)
+
+**Code layout, `safe`, `draw_header`, list spacing, keys:** `documentation/config-style.md`.
 
 ## Purpose
 
-Lets the user assign a default application for each category. Two-level navigation: pick a category, then pick an app from a list filtered from `.app` bundles on disk. Persistence goes through `config/settings_store.py` into the repo-root `settings.json`.
-
----
+Two-level flow: pick a **category** (Browser, IDE, Music, Notes, Terminal), then pick an **app** from `.app` bundles on disk. Saves into `settings.json` → **`apps`** via `config/settings_store.py`.
 
 ## Flow
 
 ```
-main.py  →  run_apps()  →  category screen  →  app picker screen
-                                                      ↓
-                                               save via settings_store
-                                                      ↓
-                                            return to category screen
+main.py  →  run_apps()  →  category list  →  app picker  →  save  →  category list
 ```
 
-`run_apps(stdscr, color_mode)` is imported from `main.py`. It returns `True` if the user confirmed at least one app selection, `False` if they left without saving (e.g. only `esc`/`q`).
+`run_apps(stdscr, color_mode) -> bool`: **`True`** if the user saved at least one pick; **`False`** if they exited without saving.
 
----
+## Stored data
 
-## What it stores
-
-Selections are merged into **`settings.json`** under the nested **`apps`** object. Keys are lowercase category names. Values are app display names with `.app` stripped.
-
-Example (canonical file also has `color_mode` and `states` at the top level):
+Nested under **`apps`**; keys are lowercase category names; values are `.app` names without the suffix.
 
 ```json
 {
@@ -40,122 +32,41 @@ Example (canonical file also has `color_mode` and `states` at the top level):
 }
 ```
 
-`save_settings()` rewrites the file using the canonical shape (see `config/settings_store.py`).
-
----
+Full file shape: `documentation/settings_store.md`.
 
 ## Categories
 
-Order matches `CATEGORIES` in code (Browser → IDE → Music → Notes → Terminal).
+Order matches `CATEGORIES` in code.
 
-| Category | Saved key under `apps` |
-|----------|-------------------------|
+| Category | Key |
+|----------|-----|
 | Browser | `browser` |
 | IDE | `ide` |
 | Music | `music` |
 | Notes | `notes` |
 | Terminal | `terminal` |
 
----
-
 ## App discovery
 
-Apps are collected from:
+Scans: `/Applications`, `/System/Applications`, `/System/Applications/Utilities`, `~/Applications`. Only `*.app`; dedupe; sort case-insensitively.
 
-| Path | Notes |
-|------|-------|
-| `/Applications` | User-installed apps |
-| `/System/Applications` | macOS system apps |
-| `/System/Applications/Utilities` | Terminal, Activity Monitor, etc. |
-| `~/Applications` | User-scoped installs |
+## Filtering (`CATEGORY_HINTS`)
 
-Only `.app` bundles are included; the `.app` suffix is stripped from names. Results are deduplicated and sorted case-insensitively.
+Include an app if its lowercased name contains any hint for that category. **Music** includes the same browser-related hints as Browser (listening in a browser). If nothing matches, show the **full** list.
 
----
+## Picker header
 
-## App filtering (`CATEGORY_HINTS`)
+Second-level title: `apps  /  {category}` with **lowercase** category (e.g. `browser`).
 
-An app is included if its lowercased name contains any hint string for that category.
+## Navigation (apps-specific)
 
-| Category | Hint keywords (representative) |
-|----------|--------------------------------|
-| Browser | chrome, firefox, safari, brave, arc, edge, opera, vivaldi |
-| IDE | code, xcode, intellij, pycharm, …, cursor, nova |
-| Music | spotify, music, itunes, …, plus the same browser-related hints as Browser |
-| Notes | obsidian, notion, bear, notes, craft, roam, logseq, … |
-| Terminal | terminal, iterm, iterm2, warp, alacritty, kitty, hyper, ghostty |
+| Screen | `↑` `↓` | `enter` | `q` / `esc` |
+|--------|---------|---------|-------------|
+| Categories | move | open picker | back to hub |
+| App picker | move / scroll | save & return | return without save |
 
-If nothing matches, the **full** app list is shown so the user is never stuck.
+## Principles
 
----
-
-## Visual structure
-
-### Category screen
-
-```
-row 0   @ WENDY   apps          ↑↓ navigate   enter select   esc back
-row 1   ──────────────────────────────────────────────────────────────
-row 3   > Browser   Firefox
-...
-```
-
-### App picker screen
-
-Header title: `apps  /  {category}` with the category in **lowercase** (e.g. `browser`).
-
----
-
-## Color / palette
-
-Uses `make_palette(color_mode)` from `config/palette.py` — **`RED`**, **`PINK`**, **`NORM`**, **`DIM`** (no separate `HINT` symbol). Controls string uses **`PINK`**; current value next to the category uses **`DIM`**.
-
----
-
-## Header (`draw_header`)
-
-- `@ WENDY` — `RED`
-- Title — `DIM`
-- Controls — `PINK`, right-aligned
-- Row 1 — red `ACS_HLINE`
-
----
-
-## Scrolling (app picker)
-
-Same pattern as other list screens: `list_rows = (h - 4) // 2`, cursor-centered scrolling via `scroll` index.
-
----
-
-## Return value
-
-- `True` — at least one selection was saved from the app picker (`enter` with a non-empty filtered list).
-- `False` — exited without saving.
-
----
-
-## Navigation
-
-### Category screen
-
-| Key | Action |
-|-----|--------|
-| `↑` / `↓` | Move cursor |
-| `enter` | Open app picker |
-| `q` / `esc` | Back to hub |
-
-### App picker
-
-| Key | Action |
-|-----|--------|
-| `↑` / `↓` | Move cursor / scroll |
-| `enter` | Save and return to categories |
-| `q` / `esc` | Return without saving |
-
----
-
-## Design principles
-
-- **Two-level UX** — category first, then app.
-- **Immediate save** on confirm in the picker.
-- **Filtered by default**, full list as fallback.
+- Category first, then app.
+- Save on confirm in the picker.
+- Prefer filtered list; never block on an empty filter result.

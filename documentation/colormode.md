@@ -1,56 +1,36 @@
-# Wendy — Color Mode screen (`config/colormode.py`)
+# Wendy — Color Mode (`config/colormode.py`)
+
+**Shared screen patterns (`run_*`, palette, `safe`, keys):** `documentation/config-style.md` → **Screen modules** (this module uses **`NORM`/`DIM`** for title/controls instead of the usual **`DIM`/`PINK`** — noted there).
 
 ## Purpose
 
-From the hub menu (**Color Mode**), lets the user choose **Dark** or **Light** and **writes `color_mode` to `settings.json`** via `config/settings_store.py`. This is the persisted preference; it is separate from the launch-only choice in `config/colorpicker.py`.
-
----
+From the hub (**Color Mode**), choose **Dark** or **Light** and **save** `color_mode` to `settings.json` via `config/settings_store.py`. This is the persisted preference; the launch picker (`config/colorpicker.py`) is session-only.
 
 ## Flow
 
-```
-main.py  →  run_color_mode(stdscr, color_mode)  →  load_settings()
-                                                    save_settings() if changed
-                                                    return bool
-```
-
-`main.py` passes the **current** session mode (from `pick_color_mode`). If the user selects a different mode and confirms, `settings["color_mode"]` is updated and saved. The hub then toggles its local `color_mode` and rebuilds the palette.
-
----
+`main.py` calls `run_color_mode(stdscr, color_mode)` with the current session mode. On confirm with a **different** mode, `settings["color_mode"]` is updated and saved; the hub then flips local `color_mode` and rebuilds the palette.
 
 ## Data
 
-| Key | Values |
-|-----|--------|
-| `color_mode` | `"dark"` or `"light"` (stored lowercase) |
+| Key | Stored value |
+|-----|----------------|
+| `color_mode` | `"dark"` or `"light"` (lowercase) |
 
-`MODES` in code is `["Dark", "Light"]` for display; the saved value uses `.lower()`.
+`MODES` in code: `["Dark", "Light"]` for labels; saved value uses `.lower()`.
 
----
+## Behavior
 
-## UI
+- **`enter`** — if chosen mode ≠ incoming `color_mode`, save and set **`changed`**; then exit.
+- **`q` / `esc`** — exit without persisting a change (`changed` **False**).
 
-- Header: `@ WENDY`, title `color mode` (title uses **`NORM`**), controls **`DIM`** (right-aligned): `↑↓ navigate   enter select   esc back`
-- Rows 3 and 5 (with spacing): **Dark** and **Light** list items; selected uses `RED` and `>`; unselected `NORM`
-- `enter` — apply if selection differs from incoming `color_mode`, then exit
-- `q` / `esc` — exit without saving change (`changed` stays `False`)
-
----
+List of **Dark** / **Light** follows the shared list layout (row 3, step 2) in `config-style.md`.
 
 ## Return value
 
-- `True` — user chose a mode **different** from the passed-in `color_mode` and confirmed (file written).
-- `False` — user exited without changing, or chose the same mode as before.
+- **`True`** — user confirmed a mode **different** from the one passed in (file written).
+- **`False`** — same mode as before, or quit without applying.
 
----
+## Principles
 
-## Palette
-
-Uses `make_palette(color_mode)` from `config/palette.py` (`RED`, `PINK`, `NORM`, `DIM`).
-
----
-
-## Design principles
-
-- **Persistence** — this screen is how `color_mode` gets into `settings.json`.
-- **Distinct from colorpicker** — launch picker = session UI; this screen = saved preference.
+- This screen is how **`color_mode`** enters `settings.json`.
+- Distinct from **`colorpicker`** — launch vs saved preference.

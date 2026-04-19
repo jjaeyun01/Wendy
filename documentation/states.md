@@ -1,83 +1,73 @@
-# Wendy — States screen (`config/states.py`)
+# Wendy — States (`config/states.py`)
+
+**Shared patterns (`safe`, `draw_header`, lists, scroll, default keys):** `documentation/config-style.md`. This module **passes custom `controls`** strings into `draw_header` on workspace / app screens.
 
 ## Purpose
 
-Manage **named states** stored under `settings.json` → **`states`**. Each state is a string key mapping to an object (today always `{}` — reserved for future triggers/actions). Provides a scrollable list, add/delete shortcuts, and a placeholder detail view.
+**States** are named presets under `settings.json` → **`states`**. Each state has a **workspace map** (IDs `1`–`9`, then `A`–`Z`). Each workspace can enable up to **four** of the five global categories (browser, IDE, music, notes, terminal) and optional **URLs** for browser / browser-like music.
 
----
+Persistence: **`load_settings` / `save_settings`** only.
 
-## Flow
+## Entry
 
-```
-main.py  →  run_states(stdscr, color_mode)  →  load_settings / save_settings via settings_store
-```
-
-Returns `True` if a state was added or deleted and saved; `False` if the user quits without such a change.
-
----
+`run_states(stdscr, color_mode) -> bool` — **`True`** if the user saved (new/delete state, or nested workspace changes). **`False`** if they quit the **state list** with `q`/`esc` without such saves.
 
 ## Data shape
-
-In the canonical file:
 
 ```json
 {
   "states": {
-    "Tony Stark": {}
+    "Work": {
+      "workspaces": {
+        "1": {
+          "apps": ["browser", "ide", "music", "notes"],
+          "browser_url": "https://example.com",
+          "music_url": "https://music.example.com"
+        }
+      }
+    }
   }
 }
 ```
 
-New states are added as `settings["states"][name] = {}`.
+| Field | Meaning |
+|--------|---------|
+| `workspaces` | Map of workspace ID → config. |
+| `apps` | Lowercase category names; **max four** per workspace. |
+| `browser_url` | Set when Browser is enabled; cleared when toggled off. |
+| `music_url` | When Music is enabled **and** global `apps.music` matches browser-like names (`BROWSER_HINTS` / same idea as `apps.py`). |
 
----
+New states start as **`{"workspaces": {}}`**.
 
-## Screens
+## Screen 1 — State list
 
-### List screen
+- Header title **`states`**; controls `↑↓ navigate   enter open   esc back`.
+- Sorted names; scrollable list; empty → `No states yet.`
+- Footer **`n  new   d  delete`** when not adding.
+- **`n`** — prompt `new state: `; **`enter`** commits non-empty name.
+- **`d`** — delete highlighted state.
+- **`enter`** — open workspace grid for that state.
+- **`q` / `esc`** — leave `run_states`.
 
-- Header: `states`, controls `↑↓ navigate   enter open   esc back` (`PINK`)
-- Scrollable list of state names (same row spacing pattern as other lists)
-- Empty list: message `No states yet.`
-- Footer when not adding: `n  new   d  delete` (`DIM`, bottom-right)
+## Screen 2 — Workspace grid (`_run_workspaces`)
 
-### Add mode (`n`)
+- **`WORKSPACE_IDS`**: `"1"`…`"9"`, `"A"`…`"Z"`; **9 columns** (`COLS = 9`).
+- Cursor: **`>`** left of ID. **RED** = cursor; **PINK** = has apps; **NORM** = empty.
+- Footer: `{id}: {categories…}` or `empty`.
+- **`↑`/`↓`** move by grid row (step 9 indices); **`←`/`→`** by one cell.
 
-- Footer becomes a prompt: `new state: ` with inline input and cursor block
-- `enter` — commit non-empty name, save, resort list
-- `esc` — cancel
+## Screen 3 — Workspace apps (`_run_ws_apps`)
 
-### Detail screen (`enter` on a state)
+- Toggle categories with **`enter`** (max four on). Removing browser/music clears URLs.
+- Adding **Browser** prompts for **`browser_url`**; adding **Music** prompts for **`music_url`** only if `music_is_browser(settings)`.
+- **`esc`/`q`** (outside URL input) — write `apps`, `browser_url`, `music_url` for this `ws_id` and exit (returns **`True`**).
 
-- Header: `states  /  {name}`
-- Body: `Triggers and actions coming soon.`
-- `q` / `esc` — back to list
+## Implementation notes
 
-### Delete (`d`)
+- **`music_is_browser(settings)`** — reads global **`settings["apps"]["music"]`** against browser hints.
+- **`enabled`** — `set` of lowercase category names; stored sorted.
 
-- Removes the highlighted state from `settings["states"]` and saves.
+## Principles
 
----
-
-## Navigation
-
-| Key | Action |
-|-----|--------|
-| `↑` / `↓` | Move cursor (list) |
-| `enter` | Open detail placeholder |
-| `n` | New state (prompt) |
-| `d` | Delete selected state |
-| `q` / `esc` | Back / quit |
-
----
-
-## Palette
-
-Uses `make_palette(color_mode)` from `config/palette.py`.
-
----
-
-## Design principles
-
-- **Honest return** — `True` only when the file was actually updated (add/delete).
-- **Placeholder detail** — room for future triggers/actions without changing the `states` map shape yet.
+- State → workspace → category + URL layering.
+- **Four** categories max per workspace.
