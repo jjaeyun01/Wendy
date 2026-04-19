@@ -171,7 +171,8 @@ class WakeWordDetector:
                 text = partial.get("partial", "").lower()
 
             if text.strip() and any(t in text for t in self._triggers):
-                self.arm()
+                if not self.is_armed():
+                    self.arm()
 
         with sd.InputStream(
             samplerate=16000,

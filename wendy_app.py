@@ -515,8 +515,8 @@ class WendyApp(QMainWindow):
 
     def _on_mic_level(self, amp: float) -> None:
         self._wave.push(amp)
-        db = 20 * float(np.log10(amp + 1e-9))
-        self._db_lb.setText(f"{db:.0f} dB")
+        level = min(100, max(0, int(amp * 200)))
+        self._db_lb.setText(f"LVL  {level:3d}")
 
     def _on_status(self, s: str) -> None:
         if s == "running":

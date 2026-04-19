@@ -202,7 +202,6 @@ class VisualClapDetector:
                     print(f"  [cam] L={lx_:.2f} R={rx_:.2f} dist={d_:.2f}  far>{self._far:.2f} near<{self._near:.2f}  was_far={was_far}")
 
             if left is None or right is None:
-                was_far = False
                 continue
 
             lx, ly = cx(left),  cy(left)

@@ -1,99 +1,33 @@
 {
-    "version": "1.0.0",
-    "settings": {
-      "clap_threshold": 0.05,
-      "clap_interval_ms": 1500,
-      "camera_index": 0,
-      "cooldown_ms": 20000,
-      "post_trigger_guard_sec": 25,
-      "double_clap_min_gap_sec": 0.22,
-      "apply_command_delay_sec": 1.2,
-      "apply_pre_arrange_delay_sec": 2.0,
-      "youtube_settle_sec": 3,
-      "youtube_simulate_play": false,
-      "visual_clap_require": true,
-      "visual_clap_window_sec": 1.5,
-      "visual_clap_distance": 0.30,
-      "wake_word": {
-        "enabled": true,
-        "word": "wendy",
-        "aliases": ["when the", "when d", "wendi"],
-        "arm_seconds": 10
-      }
-    },
-    "profiles": [
-      {
-        "id": "dev-mode",
-        "name": "dev",
-        "workspace": "Q",
-        "icon": "💻",
-        "layout": {
-          "description": "left: Cursor | right-top: Terminal | right-bottom: Finder",
-          "commands": [
-            "workspace Q"
-          ],
-          "relocatable_apps": [
-            {
-              "bundle_id": "com.todesktop.230313mzl4w4u92",
-              "open_cmd": "open -n /Applications/Cursor.app"
-            },
-            {
-              "bundle_id": "com.apple.Terminal",
-              "open_cmd": "open -n /System/Applications/Utilities/Terminal.app"
-            },
-            {
-              "bundle_id": "com.apple.finder",
-              "open_cmd": "open -a Finder"
-            }
-          ],
-          "arrange": [
-            "focus --app-bundle-id com.todesktop.230313mzl4w4u92",
-            "layout h_tiles",
-            "focus --app-bundle-id com.apple.Terminal",
-            "join-with right",
-            "focus --app-bundle-id com.apple.finder",
-            "join-with down"
-          ]
-        }
-      },
-      {
-        "id": "comms-mode",
-        "name": "comms",
-        "workspace": "2",
-        "icon": "💬",
-        "layout": {
-          "description": "left: Slack | right: Mail",
-          "commands": [
-            "workspace 2",
-            "exec-and-forget open -n /Applications/Slack.app",
-            "exec-and-forget open -n /System/Applications/Mail.app"
-          ],
-          "arrange": [
-            "layout h_tiles"
-          ]
-        }
-      },
-      {
-        "id": "jarvis-mode",
-        "name": "jarvis mode",
-        "workspace": "9",
-        "icon": "🔴",
-        "layout": {
-          "description": "jarvis: workspace 9 then YouTube in Firefox",
-          "commands": [
-            "workspace 9"
-          ],
-          "arrange": []
-        },
-        "music": {
-          "path": "/Users/music/ironman.mp3",
-          "youtube_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM",
-          "player": "firefox"
-        }
-      }
-    ],
-    "trigger": {
-      "type": "double_clap",
-      "target_profiles": ["jarvis-mode", "dev-mode"]
+  "version": "1.0.0",
+  "settings": {
+    "clap_threshold": 0.05,
+    "clap_interval_ms": 1500,
+    "camera_index": 0,
+    "cooldown_ms": 20000,
+    "post_trigger_guard_sec": 25,
+    "double_clap_min_gap_sec": 0.22,
+    "apply_command_delay_sec": 1.2,
+    "apply_pre_arrange_delay_sec": 2.0,
+    "youtube_settle_sec": 3,
+    "youtube_simulate_play": false,
+    "visual_clap_require": true,
+    "visual_clap_window_sec": 1.5,
+    "visual_clap_distance": 0.3,
+    "wake_word": {
+      "enabled": true,
+      "word": "wendy",
+      "aliases": [
+        "when the",
+        "when d",
+        "wendi"
+      ],
+      "arm_seconds": 10
     }
+  },
+  "profiles": [],
+  "trigger": {
+    "type": "double_clap",
+    "target_profiles": []
   }
+}

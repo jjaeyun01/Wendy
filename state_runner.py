@@ -385,6 +385,13 @@ def apply_profiles(cfg: dict, profile_ids: list[str] | None = None) -> None:
 
 
 def main() -> None:
+    # Sync user settings → config.json before applying profiles
+    try:
+        from settings_bridge import sync as _sync
+        _sync()
+    except Exception as exc:
+        print(f"  ⚠  settings_bridge skipped: {exc}")
+
     cfg = _load_config()
     extra = [x for x in sys.argv[1:] if x.strip()]
     apply_profiles(cfg, extra if extra else None)
