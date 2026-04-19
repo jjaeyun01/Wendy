@@ -25,9 +25,219 @@
       "arm_seconds": 10
     }
   },
-  "profiles": [],
+  "profiles": [
+    {
+      "id": "ws-9",
+      "name": "workspace 9",
+      "workspace": "9",
+      "layout": {
+        "description": "workspace 9: music",
+        "commands": [
+          "workspace 9"
+        ],
+        "relocatable_apps": [
+          {
+            "bundle_id": "org.mozilla.firefox",
+            "open_cmd": "open -n \"/Applications/Firefox.app\""
+          }
+        ],
+        "arrange": []
+      },
+      "music": {
+        "youtube_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
+        "player": "firefox"
+      }
+    },
+    {
+      "id": "ws-7",
+      "name": "workspace 7",
+      "workspace": "7",
+      "layout": {
+        "description": "workspace 7: browser, ide, music, terminal",
+        "commands": [
+          "workspace 7"
+        ],
+        "relocatable_apps": [
+          {
+            "bundle_id": "org.mozilla.firefox",
+            "open_cmd": "open -n \"/Applications/Firefox.app\""
+          },
+          {
+            "bundle_id": "com.todesktop.230313mzl4w4u92",
+            "open_cmd": "open -n \"/Applications/Cursor.app\""
+          },
+          {
+            "bundle_id": "org.mozilla.firefox",
+            "open_cmd": "open -n \"/Applications/Firefox.app\""
+          }
+        ],
+        "arrange": []
+      },
+      "music": {
+        "youtube_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
+        "player": "firefox"
+      },
+      "browser_launch": {
+        "url": "https://github.com/twoSquaredHoon?tab=repositories",
+        "app": "Firefox"
+      }
+    },
+    {
+      "id": "ws-2",
+      "name": "workspace 2",
+      "workspace": "2",
+      "layout": {
+        "description": "workspace 2: music, terminal",
+        "commands": [
+          "workspace 2"
+        ],
+        "relocatable_apps": [
+          {
+            "bundle_id": "org.mozilla.firefox",
+            "open_cmd": "open -n \"/Applications/Firefox.app\""
+          }
+        ],
+        "arrange": []
+      },
+      "music": {
+        "youtube_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
+        "player": "firefox"
+      }
+    },
+    {
+      "id": "ws-6",
+      "name": "workspace 6",
+      "workspace": "6",
+      "layout": {
+        "description": "workspace 6: browser, ide, terminal",
+        "commands": [
+          "workspace 6"
+        ],
+        "relocatable_apps": [
+          {
+            "bundle_id": "org.mozilla.firefox",
+            "open_cmd": "open -n \"/Applications/Firefox.app\""
+          },
+          {
+            "bundle_id": "com.todesktop.230313mzl4w4u92",
+            "open_cmd": "open -n \"/Applications/Cursor.app\""
+          }
+        ],
+        "arrange": []
+      },
+      "browser_launch": {
+        "url": "https://github.com/twoSquaredHoon?tab=repositories",
+        "app": "Firefox"
+      }
+    },
+    {
+      "id": "ws-5",
+      "name": "workspace 5",
+      "workspace": "5",
+      "layout": {
+        "description": "workspace 5: browser, ide, terminal",
+        "commands": [
+          "workspace 5"
+        ],
+        "relocatable_apps": [
+          {
+            "bundle_id": "org.mozilla.firefox",
+            "open_cmd": "open -n \"/Applications/Firefox.app\""
+          },
+          {
+            "bundle_id": "com.todesktop.230313mzl4w4u92",
+            "open_cmd": "open -n \"/Applications/Cursor.app\""
+          }
+        ],
+        "arrange": []
+      },
+      "browser_launch": {
+        "url": "https://github.com/twoSquaredHoon?tab=repositories",
+        "app": "Firefox"
+      }
+    },
+    {
+      "id": "ws-4",
+      "name": "workspace 4",
+      "workspace": "4",
+      "layout": {
+        "description": "workspace 4: browser, ide, terminal",
+        "commands": [
+          "workspace 4"
+        ],
+        "relocatable_apps": [
+          {
+            "bundle_id": "org.mozilla.firefox",
+            "open_cmd": "open -n \"/Applications/Firefox.app\""
+          },
+          {
+            "bundle_id": "com.todesktop.230313mzl4w4u92",
+            "open_cmd": "open -n \"/Applications/Cursor.app\""
+          }
+        ],
+        "arrange": []
+      },
+      "browser_launch": {
+        "url": "https://github.com/twoSquaredHoon?tab=repositories",
+        "app": "Firefox"
+      }
+    },
+    {
+      "id": "ws-3",
+      "name": "workspace 3",
+      "workspace": "3",
+      "layout": {
+        "description": "workspace 3: browser, terminal",
+        "commands": [
+          "workspace 3"
+        ],
+        "relocatable_apps": [
+          {
+            "bundle_id": "org.mozilla.firefox",
+            "open_cmd": "open -n \"/Applications/Firefox.app\""
+          }
+        ],
+        "arrange": []
+      },
+      "browser_launch": {
+        "url": "About Chicken",
+        "app": "Firefox"
+      }
+    },
+    {
+      "id": "ws-1",
+      "name": "workspace 1",
+      "workspace": "1",
+      "layout": {
+        "description": "workspace 1: browser",
+        "commands": [
+          "workspace 1"
+        ],
+        "relocatable_apps": [
+          {
+            "bundle_id": "org.mozilla.firefox",
+            "open_cmd": "open -n \"/Applications/Firefox.app\""
+          }
+        ],
+        "arrange": []
+      },
+      "browser_launch": {
+        "url": "https://github.com/jjaeyun01/Wendy",
+        "app": "Firefox"
+      }
+    }
+  ],
   "trigger": {
     "type": "double_clap",
-    "target_profiles": []
+    "target_profiles": [
+      "ws-9",
+      "ws-7",
+      "ws-2",
+      "ws-6",
+      "ws-5",
+      "ws-4",
+      "ws-3",
+      "ws-1"
+    ]
   }
 }

@@ -15,7 +15,11 @@
             "browser"
           ],
           "browser_url": "https://github.com/jjaeyun01/Wendy",
-          "music_url": ""
+          "music_url": "",
+          "layout": {
+            "n": 1,
+            "id": 1
+          }
         },
         "2": {
           "apps": [
@@ -35,24 +39,30 @@
         },
         "3": {
           "apps": [
-            "ide",
+            "browser",
             "terminal"
           ],
-          "browser_url": "",
+          "browser_url": "About Chicken",
           "music_url": "",
           "layout": {
             "n": 2,
             "id": 2,
             "slots": {
-              "B": "ide",
-              "A": "terminal"
+              "A": "browser",
+              "B": "terminal"
             }
           }
         },
         "9": {
-          "apps": [],
+          "apps": [
+            "music"
+          ],
           "browser_url": "",
-          "music_url": ""
+          "music_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
+          "layout": {
+            "n": 1,
+            "id": 1
+          }
         },
         "4": {
           "apps": [
@@ -127,6 +137,11 @@
               "D": "terminal"
             }
           }
+        },
+        "8": {
+          "apps": [],
+          "browser_url": "",
+          "music_url": ""
         }
       }
     }
