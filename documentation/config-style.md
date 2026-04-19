@@ -9,6 +9,8 @@ Single reference for **formatting, code layout, shared curses patterns, palette,
 | Doc | Contents |
 |-----|----------|
 | `documentation/main.md` | `main.py` hub: flow, menu, `settings.json` overview, footer **messages** |
+| `config/layout3.py` | Three-pane layout picker (`pick_layout_3`); used from **States → Layouts** when `n=3` |
+| `config/states.py` | `LAYOUTS_1` / `LAYOUTS_2` / `LAYOUTS_4` + `_pick_layout_list` for other counts |
 | `documentation/apps.md` | App categories, discovery, filtering, apps-specific navigation |
 | `documentation/states.md` | State / workspace / URL data and three-level UI **behavior** |
 | `documentation/colorpicker.md` | Launch splash: API, session vs persisted mode |

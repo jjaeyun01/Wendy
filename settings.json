@@ -17,7 +17,16 @@
             "terminal"
           ],
           "browser_url": "https://github.com/twoSquaredHoon?tab=repositories",
-          "music_url": ""
+          "music_url": "",
+          "layout": {
+            "n": 3,
+            "id": 1,
+            "slots": {
+              "A": "browser",
+              "B": "ide",
+              "C": "terminal"
+            }
+          }
         },
         "9": {
           "apps": [

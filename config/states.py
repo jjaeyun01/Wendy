@@ -1,5 +1,7 @@
 import curses
 import os
+
+from config.layout3 import assign_slots_abc, pick_layout_3
 from config.palette import make_palette
 from config.settings_store import load_settings, save_settings
 
@@ -7,6 +9,139 @@ os.environ.setdefault("ESCDELAY", "0")
 
 CATEGORIES = ["Browser", "IDE", "Music", "Notes", "Terminal"]
 WORKSPACE_IDS = [str(i) for i in range(1, 10)] + [chr(c) for c in range(ord("A"), ord("Z") + 1)]
+
+# ── Layouts for 1, 2, or 4 content apps (3-pane layouts live in config/layout3.py) ─
+
+LAYOUTS_1 = [
+    {
+        "id": 1,
+        "name": "Full",
+        "tag": "100%",
+        "art": [
+            "+----------------------------+",
+            "|                            |",
+            "|             A              |",
+            "|                            |",
+            "+----------------------------+",
+        ],
+    },
+]
+
+LAYOUTS_2 = [
+    {
+        "id": 1,
+        "name": "Side by side",
+        "tag": "1/2 + 1/2",
+        "art": [
+            "+-------------+-------------+",
+            "|             |             |",
+            "|      A      |      B      |",
+            "|             |             |",
+            "+-------------+-------------+",
+        ],
+    },
+    {
+        "id": 2,
+        "name": "Stacked",
+        "tag": "1/2 + 1/2",
+        "art": [
+            "+----------------------------+",
+            "|            A               |",
+            "+----------------------------+",
+            "|            B               |",
+            "+----------------------------+",
+        ],
+    },
+]
+
+LAYOUTS_4 = [
+    {
+        "id": 1,
+        "name": "2×2 Grid",
+        "tag": "2×2",
+        "art": [
+            "+-------------+-------------+",
+            "|      A      |      B      |",
+            "+-------------+-------------+",
+            "|      C      |      D      |",
+            "+-------------+-------------+",
+        ],
+    },
+    {
+        "id": 2,
+        "name": "Columns",
+        "tag": "4 × 1/4",
+        "art": [
+            "+-----+-----+-----+-----+",
+            "|  A  |  B  |  C  |  D  |",
+            "|     |     |     |     |",
+            "|     |     |     |     |",
+            "+-----+-----+-----+-----+",
+        ],
+    },
+]
+
+
+def _layouts_for_content_count(n: int) -> list:
+    if n <= 0:
+        return []
+    if n == 1:
+        return LAYOUTS_1
+    if n == 2:
+        return LAYOUTS_2
+    if n == 4:
+        return LAYOUTS_4
+    return []
+
+
+def _pick_layout_list(stdscr, p, safe, draw_header, header_title: str, layouts: list) -> int | None:
+    """Generic layout picker for 1, 2, or 4 panes (same interaction as layout3)."""
+    if not layouts:
+        return None
+    selected = 0
+    while True:
+        _, w = stdscr.getmaxyx()
+        stdscr.erase()
+        draw_header(header_title, "↑↓ navigate   enter select   esc back")
+
+        for i, layout in enumerate(layouts):
+            row = 3 + i * 2
+            is_sel = i == selected
+            cur = ">" if is_sel else " "
+            attr = p["RED"] if is_sel else p["NORM"]
+            safe(row, 2, cur, attr)
+            safe(row, 4, f"{layout['id']:02d}  {layout['name']}", attr)
+
+        layout = layouts[selected]
+        art = layout["art"]
+        art_w = len(art[0]) if art else 0
+        art_col = max(4, w - art_w - 4)
+        art_row = 3
+
+        for j, line in enumerate(art):
+            safe(art_row + j, art_col, line, p["RED"])
+
+        y_after = art_row + len(art) + 1
+        if layout.get("tag_lines"):
+            for k, line in enumerate(layout["tag_lines"]):
+                safe(y_after + k, art_col, line, p["DIM"])
+        elif layout.get("tag"):
+            safe(y_after, art_col, layout["tag"], p["DIM"])
+
+        stdscr.refresh()
+        key = stdscr.getch()
+
+        if key in (ord("q"), 27):
+            return None
+        if key == curses.KEY_UP:
+            selected = max(0, selected - 1)
+        elif key == curses.KEY_DOWN:
+            selected = min(len(layouts) - 1, selected + 1)
+        elif key in (curses.KEY_ENTER, 10, 13):
+            return layouts[selected]["id"]
+
+# After picking a workspace: alphabetical — Contents (app toggles + URLs), Layouts (tile picker).
+WORKSPACE_VIEWS = ["Contents", "Layouts"]
 
 
 def run_states(stdscr, color_mode: str) -> bool:
@@ -199,13 +334,120 @@ def _run_workspaces(stdscr, color_mode, state_name, p, safe, draw_header) -> boo
             cursor = min(len(WORKSPACE_IDS) - 1, cursor + 1)
         elif key in (curses.KEY_ENTER, 10, 13):
             ws_id = WORKSPACE_IDS[cursor]
-            ws_changed = _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header)
+            ws_changed = _run_workspace_menu(
+                stdscr, color_mode, state_name, ws_id, p, safe, draw_header
+            )
             if ws_changed:
                 changed = True
         elif key in (ord("q"), 27):
             break
 
     return changed
+
+
+def _run_workspace_menu(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) -> bool:
+    """Contents vs Layouts (alphabetical). Esc from Contents returns here; esc from menu returns to grid."""
+    cursor = 0  # Contents — first row
+    changed = False
+    while True:
+        h, w = stdscr.getmaxyx()
+        stdscr.erase()
+        draw_header(
+            f"states  /  {state_name}  /  {ws_id}",
+            "↑↓ navigate   enter open   esc back",
+        )
+        for i, label in enumerate(WORKSPACE_VIEWS):
+            row = 3 + i * 2
+            if cursor == i:
+                safe(row, 2, ">", p["RED"])
+                safe(row, 4, label, p["RED"])
+            else:
+                safe(row, 4, label, p["NORM"])
+
+        stdscr.refresh()
+        key = stdscr.getch()
+
+        if key == curses.KEY_UP:
+            cursor = max(0, cursor - 1)
+        elif key == curses.KEY_DOWN:
+            cursor = min(len(WORKSPACE_VIEWS) - 1, cursor + 1)
+        elif key in (curses.KEY_ENTER, 10, 13):
+            if WORKSPACE_VIEWS[cursor] == "Layouts":
+                if _run_workspace_layouts(stdscr, state_name, ws_id, p, safe, draw_header):
+                    changed = True
+            else:
+                if _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header):
+                    changed = True
+        elif key in (ord("q"), 27):
+            return changed
+
+
+def _run_workspace_layouts(stdscr, state_name, ws_id, p, safe, draw_header) -> bool:
+    """Pick a tile layout matching the number of apps in Contents. Saves `layout: {n, id}`."""
+    settings = load_settings()
+    state = settings.get("states", {}).get(state_name, {})
+    ws_data = state.get("workspaces", {}).get(ws_id, {})
+    n = len(ws_data.get("apps") or [])
+
+    if n == 0:
+        while True:
+            stdscr.erase()
+            draw_header(
+                f"states  /  {state_name}  /  {ws_id}  /  layouts",
+                "esc back",
+            )
+            safe(3, 4, "No contents selected. Open Contents first, then choose Layouts.", p["DIM"])
+            stdscr.refresh()
+            key = stdscr.getch()
+            if key in (ord("q"), 27):
+                return False
+
+    n = min(n, 4)
+    header = f"states  /  {state_name}  /  {ws_id}  /  layouts"
+    if n == 3:
+        picked_id = pick_layout_3(stdscr, p, safe, draw_header, header)
+        if picked_id is None:
+            return False
+        apps_three = sorted(ws_data.get("apps") or [])
+        if len(apps_three) != 3:
+            return False
+        slots = assign_slots_abc(stdscr, p, safe, draw_header, header, apps_three)
+        if slots is None:
+            return False
+        settings = load_settings()
+        if "states" not in settings:
+            settings["states"] = {}
+        if state_name not in settings["states"]:
+            settings["states"][state_name] = {}
+        st = settings["states"][state_name]
+        if "workspaces" not in st:
+            st["workspaces"] = {}
+        prev = dict(st["workspaces"].get(ws_id, {}))
+        prev["layout"] = {"n": 3, "id": picked_id, "slots": slots}
+        st["workspaces"][ws_id] = prev
+        save_settings(settings)
+        return True
+
+    layouts = _layouts_for_content_count(n)
+    if not layouts:
+        return False
+    picked_id = _pick_layout_list(stdscr, p, safe, draw_header, header, layouts)
+    if picked_id is None:
+        return False
+
+    settings = load_settings()
+    if "states" not in settings:
+        settings["states"] = {}
+    if state_name not in settings["states"]:
+        settings["states"][state_name] = {}
+    st = settings["states"][state_name]
+    if "workspaces" not in st:
+        st["workspaces"] = {}
+    prev = dict(st["workspaces"].get(ws_id, {}))
+    prev["layout"] = {"n": n, "id": picked_id}
+    st["workspaces"][ws_id] = prev
+    save_settings(settings)
+    return True
 
 
 def _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) -> bool:
