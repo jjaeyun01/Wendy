@@ -30,6 +30,8 @@ def _get_cnn():
         from ml.clap_cnn import ClapCNNClassifier
         clf = ClapCNNClassifier.load()
         _cnn = clf if clf is not None else False
+        if clf is not None:
+            print("  ✓ Clap CNN loaded (spectral gate active)")
     except Exception:
         _cnn = False
     return _cnn if _cnn is not False else None
