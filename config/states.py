@@ -5,6 +5,9 @@ from config.settings_store import load_settings, save_settings
 
 os.environ.setdefault("ESCDELAY", "0")
 
+CATEGORIES = ["Browser", "IDE", "Music", "Notes", "Terminal"]
+WORKSPACE_IDS = [str(i) for i in range(1, 10)] + [chr(c) for c in range(ord("A"), ord("Z") + 1)]
+
 
 def run_states(stdscr, color_mode: str) -> bool:
     curses.curs_set(0)
@@ -24,9 +27,8 @@ def run_states(stdscr, color_mode: str) -> bool:
         except:
             pass
 
-    def draw_header(title: str) -> None:
+    def draw_header(title: str, controls: str = "↑↓ navigate   enter open   esc back") -> None:
         h, w = stdscr.getmaxyx()
-        controls = "↑↓ navigate   enter open   esc back"
         safe(0, 0, " @ WENDY ", p["RED"])
         safe(0, 9, title, p["DIM"])
         safe(0, w - len(controls) - 1, controls, p["PINK"])
@@ -89,7 +91,7 @@ def run_states(stdscr, color_mode: str) -> bool:
                 if name:
                     if "states" not in settings:
                         settings["states"] = {}
-                    settings["states"][name] = {}
+                    settings["states"][name] = {"workspaces": {}}
                     save_settings(settings)
                     states = sorted(settings["states"].keys())
                     cursor = states.index(name)
@@ -113,27 +115,18 @@ def run_states(stdscr, color_mode: str) -> bool:
             elif key in (curses.KEY_ENTER, 10, 13):
                 if states:
                     chosen = states[cursor]
-
-                    # ── State detail screen (placeholder) ─────────────────────
-                    while True:
-                        h, w = stdscr.getmaxyx()
-                        stdscr.erase()
-                        draw_header(f"states  /  {chosen}")
-                        safe(3, 4, "Triggers and actions coming soon.", p["DIM"])
-                        stdscr.refresh()
-                        key = stdscr.getch()
-                        if key in (ord("q"), 27):
-                            break
-
+                    state_changed = _run_workspaces(stdscr, color_mode, chosen, p, safe, draw_header)
+                    if state_changed:
+                        changed = True
+                    settings = load_settings()
+                    states = sorted(settings.get("states", {}).keys())
             elif key == ord("n"):
                 adding = True
                 input_buf = ""
             elif key == ord("d"):
                 if states:
                     name = states[cursor]
-                    if "states" not in settings:
-                        settings["states"] = {}
-                    settings["states"].pop(name, None)
+                    settings.get("states", {}).pop(name, None)
                     save_settings(settings)
                     states = sorted(settings.get("states", {}).keys())
                     cursor = min(cursor, max(0, len(states) - 1))
@@ -142,3 +135,139 @@ def run_states(stdscr, color_mode: str) -> bool:
                 break
 
     return changed
+
+
+def _run_workspaces(stdscr, color_mode, state_name, p, safe, draw_header) -> bool:
+    # ── Workspace list screen ─────────────────────────────────────────────────
+    # WORKSPACE_IDS = ["1".."9", "A".."Z"]
+    # Show them in a grid, highlight selected ones (have apps assigned)
+    COLS = 9  # 9 per row looks clean: 1-9 on first row, A-I, J-R, S-Z
+    cursor = 0
+    changed = False
+
+    while True:
+        settings = load_settings()
+        state = settings.get("states", {}).get(state_name, {})
+        workspaces = state.get("workspaces", {})
+
+        h, w = stdscr.getmaxyx()
+        stdscr.erase()
+        draw_header(
+            f"states  /  {state_name}",
+            "↑↓←→ navigate   enter open   esc back",
+        )
+
+        safe(3, 4, "workspaces", p["DIM"])
+
+        for i, ws_id in enumerate(WORKSPACE_IDS):
+            col = i % COLS
+            row_n = i // COLS
+            y = 5 + row_n * 2
+            x = 4 + col * 5
+
+            has_apps = bool(workspaces.get(ws_id, {}).get("apps"))
+            is_cursor = cursor == i
+
+            if is_cursor:
+                safe(y, x - 2, ">", p["RED"])
+
+            if is_cursor:
+                attr = p["RED"]
+            elif has_apps:
+                attr = p["PINK"]
+            else:
+                attr = p["NORM"]
+
+            safe(y, x, ws_id, attr)
+
+        # Show apps for current workspace at bottom
+        current_ws_id = WORKSPACE_IDS[cursor]
+        current_apps = workspaces.get(current_ws_id, {}).get("apps", [])
+        summary = "  ".join(a.capitalize() for a in current_apps) if current_apps else "empty"
+        safe(h - 3, 4, f"{current_ws_id}:  {summary}", p["DIM"])
+
+        try:
+            stdscr.attron(p["RED"])
+            stdscr.hline(h - 2, 0, curses.ACS_HLINE, w - 1)
+            stdscr.attroff(p["RED"])
+        except:
+            pass
+
+        stdscr.refresh()
+        key = stdscr.getch()
+
+        if key == curses.KEY_UP:
+            cursor = max(0, cursor - COLS)
+        elif key == curses.KEY_DOWN:
+            cursor = min(len(WORKSPACE_IDS) - 1, cursor + COLS)
+        elif key == curses.KEY_LEFT:
+            cursor = max(0, cursor - 1)
+        elif key == curses.KEY_RIGHT:
+            cursor = min(len(WORKSPACE_IDS) - 1, cursor + 1)
+        elif key in (curses.KEY_ENTER, 10, 13):
+            ws_id = WORKSPACE_IDS[cursor]
+            ws_changed = _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header)
+            if ws_changed:
+                changed = True
+        elif key in (ord("q"), 27):
+            break
+
+    return changed
+
+
+def _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) -> bool:
+    # ── App toggle screen for one workspace ───────────────────────────────────
+    settings = load_settings()
+    state = settings.get("states", {}).get(state_name, {})
+    workspaces = state.get("workspaces", {})
+    enabled = set(workspaces.get(ws_id, {}).get("apps", []))
+    cursor = 0
+
+    while True:
+        h, w = stdscr.getmaxyx()
+        stdscr.erase()
+        draw_header(
+            f"states  /  {state_name}  /  {ws_id}",
+            "↑↓ navigate   enter toggle   esc save",
+        )
+
+        for i, cat in enumerate(CATEGORIES):
+            row = 3 + i * 2
+            selected = cat.lower() in enabled
+            if cursor == i:
+                safe(row, 2, ">", p["RED"])
+                safe(row, 4, cat, p["RED"])
+            elif selected:
+                safe(row, 4, cat, p["PINK"])
+            else:
+                safe(row, 4, cat, p["NORM"])
+
+        stdscr.refresh()
+        key = stdscr.getch()
+
+        if key == curses.KEY_UP:
+            cursor = max(0, cursor - 1)
+        elif key == curses.KEY_DOWN:
+            cursor = min(len(CATEGORIES) - 1, cursor + 1)
+        elif key in (curses.KEY_ENTER, 10, 13):
+            cat = CATEGORIES[cursor].lower()
+            if cat in enabled:
+                enabled.discard(cat)
+            else:
+                enabled.add(cat)
+        elif key in (ord("q"), 27):
+            # Save
+            settings = load_settings()
+            if "states" not in settings:
+                settings["states"] = {}
+            if state_name not in settings["states"]:
+                settings["states"][state_name] = {}
+            if "workspaces" not in settings["states"][state_name]:
+                settings["states"][state_name]["workspaces"] = {}
+            settings["states"][state_name]["workspaces"][ws_id] = {
+                "apps": sorted(enabled)
+            }
+            save_settings(settings)
+            break
+
+    return True

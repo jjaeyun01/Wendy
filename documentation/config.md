@@ -1,76 +1,103 @@
-# Wendy — Config Hub (`config.py`)
+# Wendy — Main config hub (`main.py`)
 
 ## Purpose
 
-The main entry point for Wendy's configuration. Launches immediately after the color picker and acts purely as a navigation hub — routing the user into each configuration section. Contains no configuration logic itself.
+Entry point for Wendy’s configuration TUI. Runs immediately after the launch color picker (`config/colorpicker.py`), builds the palette from the chosen mode, then acts as a **navigation hub** — routing into each configuration section. Contains no persistence logic itself; submodules use `config/settings_store.py`.
 
 ---
 
 ## Flow
 
 ```
-colorpicker.py  →  config.py  →  apps.py         (returns bool: changed)
-                            →  states.py       (stub)
-                            →  colorpicker.py  (re-enterable)
+config/colorpicker.py  →  main.py  →  config/apps.py       (returns bool: changed)
+                              →  config/colormode.py  (returns bool: changed)
+                              →  config/states.py     (returns bool: changed)
 ```
 
-`config.py` calls `pick_color_mode()` first, receives the result, initializes its color pairs, then drops into the menu loop. When the user selects a section, the relevant module is called with `stdscr` and `color_mode`. When that module exits, config **reinitializes its own color pairs** before resuming — this prevents sub-modules from corrupting the palette.
+`pick_color_mode()` runs once at startup. Its return value seeds `color_mode` and `make_palette(color_mode)`. Each submenu receives `stdscr` and the current `color_mode`. After **Apps** or **States**, the hub calls `make_palette(color_mode)` again so the palette stays consistent. After **Color Mode**, if the user changed the setting, `main.py` flips its local `color_mode` and rebuilds the palette.
 
 ---
 
-## What It Stores
+## Related modules
 
-No persistent data. Two runtime values held in memory:
+| Module | Role |
+|--------|------|
+| `main.py` | Hub loop, menu, footer jokes/messages |
+| `config/colorpicker.py` | Session-only light/dark choice at launch (`pick_color_mode`) |
+| `config/palette.py` | `make_palette(color_mode)` → `RED`, `PINK`, `NORM`, `DIM` |
+| `config/settings_store.py` | Path to repo-root `settings.json`, load/save, canonical JSON shape |
+| `config/apps.py` | Per-category default apps |
+| `config/colormode.py` | Persist `color_mode` in `settings.json` |
+| `config/states.py` | Named states (list + placeholder detail) |
+
+---
+
+## What `main.py` stores
+
+No file of its own. Runtime state:
 
 | Variable | Description |
 |----------|-------------|
-| `color_mode` | Carried in from `colorpicker.py`, passed into every sub-module |
-| `message` | Current footer text — either a joke or an update confirmation |
+| `color_mode` | From `pick_color_mode()` at launch; updated when **Color Mode** saves a change |
+| `message` | Footer text — joke or update confirmation |
+| `is_update` | Whether the footer uses the “update” style |
 
 ---
 
-## Menu Items
+## Menu items
 
-Alphabetical order — this is the standard for all Wendy screens.
+Order matches `MENU_ITEMS` in `main.py`:
 
 | Item | Module | Description |
 |------|--------|-------------|
-| Apps | `apps.py` | Assign default apps per category |
-| Color Mode | `colorpicker.py` | Re-run the color picker to switch light / dark mid-session |
-| States | `states.py` | Manage named workspace launch configurations |
+| Apps | `config/apps.py` | Default app per category (browser, IDE, music, notes, terminal) |
+| Color Mode | `config/colormode.py` | Choose Dark/Light and save to `settings.json` |
+| States | `config/states.py` | Named states; detail screen is placeholder |
 
 ---
 
-## Visual Structure
+## `settings.json` (via `settings_store`)
+
+Saved at the **repository root** (`REPO_ROOT/settings.json`), not necessarily the current working directory. The config TUI writes a **canonical** document with three top-level keys:
+
+- `color_mode` — `"dark"` or `"light"`
+- `apps` — object with keys `browser`, `ide`, `music`, `notes`, `terminal` (string values, `.app` stripped)
+- `states` — object mapping state names to objects (currently `{}` per state)
+
+`normalize_settings()` can fold **legacy** top-level keys (`browser`, `ide`, …) into `apps`. See `documentation/apps.md` and `config/settings_store.py` for details.
+
+---
+
+## Visual structure
 
 ```
 row 0    @ WENDY   config          ↑↓ navigate   enter open   esc quit
 row 1   ──────────────────────────────────────────────────────────────
 row 2   (empty)
-row 3   > Apps
+row 3     Apps
 row 4   (empty)
 row 5     Color Mode
 row 6   (empty)
 row 7     States
 ...
 row h-2 ──────────────────────────────────────────────────────────────
-row h-1  "joke or update message"
+row h-1  joke or update message
 ```
 
 ---
 
-## Color Pairs
+## Color pairs (`config/palette.py`)
 
-Defined in `palette.py` and loaded via `make_palette(color_mode)`. Re-initialized after returning from any sub-module to prevent palette corruption.
+Loaded via `make_palette(color_mode)`. Submodules re-init after returning where needed.
 
-| Pair | Alias | Hex | Dark mode | Light mode | Attribute |
-|------|-------|-----|-----------|------------|-----------|
-| 1 | `RED` | `#832e31` | custom on default | custom on default | `A_BOLD` |
-| 2 | `PINK` | `#df9396` | custom on default | custom on default | `A_BOLD` |
-| 3 | `NORM` | — | WHITE on default | BLACK on default | — |
-| — | `DIM` | — | WHITE on default | BLACK on default | `A_DIM` |
+| Alias | Role |
+|-------|------|
+| `RED` | Brand — wordmark, dividers, selected items (`A_BOLD`; custom color 16 when supported) |
+| `PINK` | Controls string, some accents (`A_BOLD`; custom color 17 when supported) |
+| `NORM` | Unselected labels |
+| `DIM` | `NORM` + `A_DIM` — dimmed text |
 
-`RED` is the brand color — used for the wordmark, dividers, and selected items. `PINK` is used for the controls string and footer jokes. `NORM` is used for unselected items. `DIM` is `NORM` with `A_DIM` — same pair, different attribute. Custom colors fall back to `COLOR_RED` / `COLOR_MAGENTA` on terminals that do not support `can_change_color()`.
+If the terminal cannot change colors, custom reds/pinks fall back to `COLOR_RED` / `COLOR_MAGENTA`.
 
 ---
 
@@ -78,46 +105,48 @@ Defined in `palette.py` and loaded via `make_palette(color_mode)`. Re-initialize
 
 - `@ WENDY` — `RED`, column 0
 - `config` — `DIM`, column 9
-- controls string — `PINK`, right-aligned: `w - len(controls) - 1`
-- row 1 — full-width red `ACS_HLINE` via `stdscr.hline()` (never `safe()` — see below)
+- Controls — `PINK`, right-aligned: `w - len(controls) - 1`
+- Row 1 — full-width red `ACS_HLINE` via `stdscr.hline()` (not `safe()` — see below)
 
 ---
 
 ## Menu (row 3+)
 
-- Items start at row 3, spaced 2 rows apart
+- Items start at row 3, spaced every **two** rows
 - Selected: `>` at column 2 in `RED`, label at column 4 in `RED`
-- Unselected: label at column 4 in `NORM`, no arrow
+- Unselected: label at column 4 in `NORM`
 
 ---
 
 ## Footer (rows h-2 and h-1)
 
 Row `h-2` — full-width red `ACS_HLINE`.
-Row `h-1` — Wendy's message, two modes:
 
-| State | Format | Style |
-|-------|--------|-------|
-| Navigating | `"joke text"` | `PINK` |
-| After a change | `update text` | `NORM` — no quotes |
+Row `h-1` — message styling:
 
-Joke rotates on every arrow key press. Update message is set explicitly after a sub-module returns and only shown if something actually changed — otherwise falls back to a new joke.
+| State | Format |
+|-------|--------|
+| Navigating (joke) | ` "…" ` — text in `PINK` |
+| After an update | ` … ` — text in `NORM` (no quote characters in the template) |
+
+Jokes rotate on every arrow key in the hub. After **Apps** or **States**, the footer uses the update style only when the submodule returns `True`. After **Color Mode**, `main.py` always uses the update-style footer (no quotes), with either the “switched” or “same as before” message.
 
 ### Update messages by action
 
 | Action | Message |
 |--------|---------|
-| Apps — something saved | `App preferences updated.` |
-| Apps — nothing saved | new random joke |
+| Apps — saved | `App preferences updated.` |
+| Apps — no save | new random joke |
 | Color Mode — changed | `Switched to {mode} mode. Good choice.` |
 | Color Mode — same | `Same as before. No judgment.` |
-| States | `States saved.` |
+| States — saved | `States saved.` |
+| States — no save | new random joke |
 
 ---
 
-## `safe()` Helper
+## `safe()` helper
 
-Writes clipped text at `(y, x)`. Silently swallows out-of-bounds and curses errors. Used for all text rendering **except `hline` calls** — `safe()` slices strings by character count which breaks multi-byte Unicode box-drawing characters. Always use `stdscr.hline()` directly for dividers.
+Clips text at `(y, x)` and ignores out-of-bounds / curses errors. Used for text, not for `hline` (string slicing breaks box-drawing).
 
 ---
 
@@ -125,16 +154,14 @@ Writes clipped text at `(y, x)`. Silently swallows out-of-bounds and curses erro
 
 | Key | Action |
 |-----|--------|
-| `↑` / `↓` | Move cursor, rotate joke |
+| `↑` / `↓` | Move cursor; new joke while navigating |
 | `enter` | Open selected section |
-| `q` | Quit |
+| `q` / `esc` | Quit |
 
 ---
 
-## Design Principles
+## Design principles
 
-- **Hub, not a form.** Contains zero configuration logic — only routes.
-- **Color is always restored.** Every sub-module call is followed by a full color pair re-init.
-- **Honest footer.** Update messages only appear if something actually changed.
-- **Alphabetical always.** All menu lists in Wendy are alphabetical. New screens must follow this.
-- **Modular by design.** Adding a section = one `MENU_ITEMS` entry + one module file. Nothing else changes.
+- **Hub only** — routes to `config/*`; no direct writes to `settings.json` except through submodules.
+- **Palette** — refreshed after subflows that can affect colors or terminal state.
+- **Honest footer** — update lines match what each submodule reports (with the Color Mode quirk noted above).

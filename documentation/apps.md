@@ -1,49 +1,55 @@
-# Wendy — Apps Screen (`apps.py`)
+# Wendy — Apps screen (`config/apps.py`)
 
 ## Purpose
 
-Lets the user assign a default application for each category Wendy knows about. Two-level navigation: first pick a category, then pick an app from a filtered list scanned directly from the filesystem.
+Lets the user assign a default application for each category. Two-level navigation: pick a category, then pick an app from a list filtered from `.app` bundles on disk. Persistence goes through `config/settings_store.py` into the repo-root `settings.json`.
 
 ---
 
 ## Flow
 
 ```
-config.py  →  apps.py  →  category screen  →  app picker screen
+main.py  →  run_apps()  →  category screen  →  app picker screen
                                                       ↓
-                                               save to settings.json
+                                               save via settings_store
                                                       ↓
                                             return to category screen
 ```
 
-`run_apps()` is called by `config.py` with `stdscr` and `color_mode`. It returns a `bool` — `True` if the user saved at least one selection, `False` if they exited without changing anything. The caller uses this to decide whether to show an update message or a joke.
+`run_apps(stdscr, color_mode)` is imported from `main.py`. It returns `True` if the user confirmed at least one app selection, `False` if they left without saving (e.g. only `esc`/`q`).
 
 ---
 
-## What It Stores
+## What it stores
 
-Selections are persisted to `settings.json` in the working directory immediately on confirm (no separate save step).
+Selections are merged into **`settings.json`** under the nested **`apps`** object. Keys are lowercase category names. Values are app display names with `.app` stripped.
+
+Example (canonical file also has `color_mode` and `states` at the top level):
 
 ```json
 {
-  "browser": "Arc",
-  "ide": "Cursor",
-  "music": "Spotify",
-  "notes": "Obsidian",
-  "terminal": "iTerm2"
+  "color_mode": "dark",
+  "apps": {
+    "browser": "Firefox",
+    "ide": "Cursor",
+    "music": "Spotify",
+    "notes": "Obsidian",
+    "terminal": "Ghostty"
+  },
+  "states": {}
 }
 ```
 
-Keys are lowercase category names. Values are app names with `.app` stripped.
+`save_settings()` rewrites the file using the canonical shape (see `config/settings_store.py`).
 
 ---
 
 ## Categories
 
-Alphabetical order — same rule as all Wendy screens.
+Order matches `CATEGORIES` in code (Browser → IDE → Music → Notes → Terminal).
 
-| Category | Saved key |
-|----------|-----------|
+| Category | Saved key under `apps` |
+|----------|-------------------------|
 | Browser | `browser` |
 | IDE | `ide` |
 | Music | `music` |
@@ -52,9 +58,9 @@ Alphabetical order — same rule as all Wendy screens.
 
 ---
 
-## App Discovery
+## App discovery
 
-Apps are scanned from four locations at startup, deduplicated, and sorted alphabetically:
+Apps are collected from:
 
 | Path | Notes |
 |------|-------|
@@ -63,142 +69,68 @@ Apps are scanned from four locations at startup, deduplicated, and sorted alphab
 | `/System/Applications/Utilities` | Terminal, Activity Monitor, etc. |
 | `~/Applications` | User-scoped installs |
 
-Only `.app` bundles are included. The `.app` suffix is stripped from display names.
+Only `.app` bundles are included; the `.app` suffix is stripped from names. Results are deduplicated and sorted case-insensitively.
 
 ---
 
-## App Filtering
+## App filtering (`CATEGORY_HINTS`)
 
-Each category has a keyword list (`CATEGORY_HINTS`). An app is included if its name (lowercased) contains any keyword.
+An app is included if its lowercased name contains any hint string for that category.
 
-| Category | Keywords |
-|----------|----------|
+| Category | Hint keywords (representative) |
+|----------|--------------------------------|
 | Browser | chrome, firefox, safari, brave, arc, edge, opera, vivaldi |
-| IDE | code, xcode, intellij, pycharm, webstorm, goland, rider, clion, rubymine, sublime, atom, zed, cursor, nova |
-| Music | spotify, music, itunes, vox, doppler, capo, swinsian, deezer, tidal + all Browser keywords |
-| Notes | obsidian, notion, bear, notes, craft, roam, logseq, evernote, simplenote, ulysses, typora |
+| IDE | code, xcode, intellij, pycharm, …, cursor, nova |
+| Music | spotify, music, itunes, …, plus the same browser-related hints as Browser |
+| Notes | obsidian, notion, bear, notes, craft, roam, logseq, … |
 | Terminal | terminal, iterm, iterm2, warp, alacritty, kitty, hyper, ghostty |
 
-Music intentionally includes all Browser keywords — the user listens to music through a browser.
-
-If no apps match, the full unfiltered list is shown so the user is never stuck.
+If nothing matches, the **full** app list is shown so the user is never stuck.
 
 ---
 
-## Visual Structure
+## Visual structure
 
 ### Category screen
 
 ```
 row 0   @ WENDY   apps          ↑↓ navigate   enter select   esc back
 row 1   ──────────────────────────────────────────────────────────────
-row 2   (empty)
-row 3   > Browser   Arc               ← selected (red) + current value (dim)
-row 4   (empty)
-row 5     IDE                         ← unselected (NORM)
-row 6   (empty)
-row 7     Music
-row 8   (empty)
-row 9     Notes
-row 10  (empty)
-row 11    Terminal
+row 3   > Browser   Firefox
+...
 ```
 
 ### App picker screen
 
-```
-row 0   @ WENDY   apps  /  browser   ↑↓ navigate   enter select   esc back
-row 1   ──────────────────────────────────────────────────────────────
-row 2   (empty)
-row 3   > Arc                         ← selected (red)
-row 4   (empty)
-row 5     Brave Browser               ← unselected (NORM)
-row 6   (empty)
-row 7     Firefox
-...
-```
+Header title: `apps  /  {category}` with the category in **lowercase** (e.g. `browser`).
 
 ---
 
-## Color Pairs
+## Color / palette
 
-Apps uses its own pair assignments (1–3 only). `config.py` re-initializes its own pairs after `run_apps()` returns.
-
-| Pair | Alias | Dark mode | Light mode | Attribute |
-|------|-------|-----------|------------|-----------|
-| 1 | `RED` | RED on default | RED on default | `A_BOLD` |
-| 2 | `NORM` | WHITE on default | BLACK on default | — |
-| 2 | `DIM` | WHITE on default | BLACK on default | `A_DIM` |
-| 3 | `HINT` | MAGENTA on default | MAGENTA on default | — |
-
-`RED` — brand color, wordmark, dividers, selected items. `HINT` (magenta) — controls string, matches config. `DIM` — current app value shown next to category name.
+Uses `make_palette(color_mode)` from `config/palette.py` — **`RED`**, **`PINK`**, **`NORM`**, **`DIM`** (no separate `HINT` symbol). Controls string uses **`PINK`**; current value next to the category uses **`DIM`**.
 
 ---
 
-## Header (shared via `draw_header()`)
+## Header (`draw_header`)
 
-Both screens share one `draw_header(title)` function. Title changes between screens:
-
-| Screen | Title |
-|--------|-------|
-| Category | `apps` |
-| App picker | `apps  /  {category}` |
-
-Structure:
-- `@ WENDY` — `RED`, column 0
-- title — `NORM`, column 9
-- controls — `HINT`, right-aligned
-- row 1 — full-width red `ACS_HLINE` via `stdscr.hline()`
+- `@ WENDY` — `RED`
+- Title — `DIM`
+- Controls — `PINK`, right-aligned
+- Row 1 — red `ACS_HLINE`
 
 ---
 
-## Menu Spacing
+## Scrolling (app picker)
 
-Both screens use 2-row spacing between items (one blank row between each). This matches `config.py` and is the standard for all Wendy list screens.
-
-Category screen: `row = 3 + i * 2`
-App picker: `row = 3 + screen_i * 2`
-
-The app picker also implements scrolling — `list_rows = (h - 4) // 2` accounts for the doubled spacing when calculating how many items fit.
+Same pattern as other list screens: `list_rows = (h - 4) // 2`, cursor-centered scrolling via `scroll` index.
 
 ---
 
-## Scrolling
+## Return value
 
-The app picker scrolls when the list exceeds the visible area:
-
-```python
-if app_cursor < scroll:
-    scroll = app_cursor
-elif app_cursor >= scroll + list_rows:
-    scroll = app_cursor - list_rows + 1
-```
-
-Cursor always stays visible. No scroll indicators are shown — the list simply moves.
-
----
-
-## Selected Item Display (Category Screen)
-
-When a category already has a saved app, it is shown dimmed next to the label:
-
-```
-> Browser   Arc
-```
-
-- Category label: `RED` (selected) or `NORM` (unselected)
-- Current value: `DIM` always, regardless of selection state
-
----
-
-## Return Value
-
-`run_apps()` returns `bool`:
-
-- `True` — user selected and confirmed at least one app (enter was pressed in the app picker)
-- `False` — user exited via `q` or `esc` without saving anything
-
-`config.py` uses this to show either `"App preferences updated."` or a new joke.
+- `True` — at least one selection was saved from the app picker (`enter` with a non-empty filtered list).
+- `False` — exited without saving.
 
 ---
 
@@ -209,24 +141,21 @@ When a category already has a saved app, it is shown dimmed next to the label:
 | Key | Action |
 |-----|--------|
 | `↑` / `↓` | Move cursor |
-| `enter` | Open app picker for selected category |
-| `q` / `esc` | Return to config |
+| `enter` | Open app picker |
+| `q` / `esc` | Back to hub |
 
-### App picker screen
+### App picker
 
 | Key | Action |
 |-----|--------|
-| `↑` / `↓` | Move cursor, scroll list |
-| `enter` | Save selection, return to category screen |
-| `q` / `esc` | Return to category screen without saving |
+| `↑` / `↓` | Move cursor / scroll |
+| `enter` | Save and return to categories |
+| `q` / `esc` | Return without saving |
 
 ---
 
-## Design Principles
+## Design principles
 
-- **Two-level, not flat.** Category → app. Never dumps a combined list of all apps for all categories.
-- **Filtered by default, never blocked.** If no apps match a category's keywords, the full list is shown.
-- **Immediate persistence.** Saves on confirm, no explicit save step.
-- **Honest return.** Returns `True` only if something was actually saved. Callers should not assume a save occurred.
-- **Shared header.** `draw_header()` is the pattern for sub-screens — one function, title string changes per level.
-- **No footer bar.** Only `config.py` has the Wendy message footer. Sub-screens are clean.
+- **Two-level UX** — category first, then app.
+- **Immediate save** on confirm in the picker.
+- **Filtered by default**, full list as fallback.

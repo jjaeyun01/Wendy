@@ -1,52 +1,52 @@
-# Wendy — Color Picker Screen
+# Wendy — Launch color picker (`config/colorpicker.py`)
 
 ## Purpose
 
-The first screen the user sees when launching Wendy config mode. It captures a single preference — **light or dark mode** — before loading the rest of the UI with the appropriate color scheme applied.
+The first screen when running `python3 main.py`. It captures **light or dark** for the **current session** so the hub and submenus can call `make_palette()` with a consistent mode before drawing the main menu.
 
 ---
 
-## What It Stores
+## API
 
-One value, picked by the user at launch:
-
-| Value | Description |
-|-------|-------------|
-| `"light"` | Light terminal background, dark-on-light colors |
-| `"dark"` | Dark terminal background, light-on-dark colors |
-
-This value is passed directly into the main app and used to initialize the full color palette. It is not written to `settings.json` — it is a per-session choice made fresh each time Wendy starts.
+- **`pick_color_mode(stdscr)`** — blocking UI loop; returns `"light"` or `"dark"`.
+- Invoked from `main.py` as `color_mode = pick_color_mode(stdscr)` **before** the hub loop.
 
 ---
 
-## Visual Style
+## Relationship to `settings.json`
+
+The launch picker does **not** read or write `settings.json`. It only affects the initial `color_mode` passed into `main.run()`.
+
+Persisted light/dark for future sessions is handled separately by **`config/colormode.py`** when the user opens **Color Mode** from the hub.
+
+---
+
+## Visual style
 
 ### Logo
-The **WENDY** wordmark is rendered in ASCII art using the `doom` figlet font, displayed in **bold red**, centered horizontally. Red is Wendy's brand color and the only consistent color across both light and dark modes.
+
+ASCII **WENDY** wordmark in bold red, centered.
 
 ### Greeting
-A single line of text appears below the logo — a Donna-from-Suits-style quip, picked randomly from three options at launch and **locked for the session** (it does not change as the user navigates). Rendered in **italics** and wrapped in `"quotes"`:
 
-- *"Before we get started, let's make sure you can actually see me."*
-- *"You're going to be staring at me all day. Choose wisely."*
-- *"Aesthetics matter. Donna taught me that."*
+One line chosen at random from three Donna-style lines, **fixed for the duration of that screen** (no re-roll on arrow keys).
 
-### Divider
-Removed. No divider between the greeting and the selection menu.
+### Selection
 
-### Selection Menu
-A minimal vertical list with two options — `LIGHT` and `DARK` — stacked top to bottom. Navigation is `↑ ↓` arrow keys, confirmed with `enter`.
+Vertical list: **LIGHT** then **DARK** (cursor 0 = light, 1 = dark). `↑` / `↓` to move, `enter` to confirm. Selected row: `>` in red + pill styling; unselected row dimmed.
 
-- The **selected option** gets a `>` arrow indicator to its left in **red**, and renders with its full pill contrast (black-on-white for LIGHT, white-on-black for DARK)
-- The **unselected option** renders dimmed, same pill style but faded
-- No extra labels, no hints, no loading screen — selection goes straight through on confirm
-- Content is vertically centered slightly below the midpoint of the terminal for visual balance
+Content is placed in the upper half of the terminal (`top = max(1, h // 2 - 5)`, options below the greeting).
 
 ---
 
-## Design Principles
+## Implementation notes
 
-- **No noise.** Every non-essential element was removed — no "choose your color mode" prompt, no loading flash, no keyboard hints.
-- **Locked randomness.** The greeting is chosen once on launch so it never flickers or shifts while the user is on the screen.
-- **Donna voice.** The assistant has personality from the first frame. Confident, direct, a little dry — no generic assistant language.
-- **Terminal-native.** Everything is built with `curses` — no external UI libraries, no dependencies beyond the Python standard library.
+- Uses its **own** curses color pairs (red, white, cyan, light/dark pills) — not `config/palette.py`. That keeps the splash independent of the hub palette.
+- `ESCDELAY` is set to `0` for responsive key handling (same as other Wendy modules).
+
+---
+
+## Design principles
+
+- **Session-only** — no file I/O; separates “how I look this run” from “what I saved for later.”
+- **Minimal** — no extra prompts beyond logo, greeting, and two options.
