@@ -1,24 +1,44 @@
 {
     "version": "1.0.0",
     "settings": {
-      "clap_threshold": 0.1,
+      "clap_threshold": 0.3,
       "clap_interval_ms": 800,
       "camera_index": 0,
-      "cooldown_ms": 2000
+      "cooldown_ms": 20000,
+      "post_trigger_guard_sec": 25,
+      "double_clap_min_gap_sec": 0.22,
+      "apply_command_delay_sec": 1.2,
+      "apply_pre_arrange_delay_sec": 2.0,
+      "youtube_settle_sec": 3,
+      "youtube_simulate_play": false,
+      "visual_clap_require": true,
+      "visual_clap_window_sec": 1.5,
+      "visual_clap_distance": 0.30
     },
     "profiles": [
       {
         "id": "dev-mode",
         "name": "dev",
-        "workspace": "1",
+        "workspace": "Q",
         "icon": "💻",
         "layout": {
           "description": "left: Cursor | right-top: Terminal | right-bottom: Finder",
           "commands": [
-            "workspace 1",
-            "exec-and-forget open -n /Applications/Cursor.app",
-            "exec-and-forget open -n /System/Applications/Utilities/Terminal.app",
-            "exec-and-forget open -n /System/Library/CoreServices/Finder.app"
+            "workspace Q"
+          ],
+          "relocatable_apps": [
+            {
+              "bundle_id": "com.todesktop.230313mzl4w4u92",
+              "open_cmd": "open -n /Applications/Cursor.app"
+            },
+            {
+              "bundle_id": "com.apple.Terminal",
+              "open_cmd": "open -n /System/Applications/Utilities/Terminal.app"
+            },
+            {
+              "bundle_id": "com.apple.finder",
+              "open_cmd": "open -a Finder"
+            }
           ],
           "arrange": [
             "focus --app-bundle-id com.todesktop.230313mzl4w4u92",
@@ -53,19 +73,21 @@
         "workspace": "9",
         "icon": "🔴",
         "layout": {
-          "description": "jarvis theme music",
+          "description": "jarvis: workspace 9 then YouTube in Firefox",
           "commands": [
             "workspace 9"
           ],
           "arrange": []
         },
         "music": {
-          "path": "/Users/music/ironman.mp3"
+          "path": "/Users/music/ironman.mp3",
+          "youtube_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM",
+          "player": "firefox"
         }
       }
     ],
     "trigger": {
       "type": "double_clap",
-      "target_profile": "dev-mode"
+      "target_profiles": ["jarvis-mode", "dev-mode"]
     }
   }

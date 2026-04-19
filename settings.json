@@ -1,7 +1,7 @@
 {
   "youtube_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
   "browser": "Firefox",
-  "workspace_dev": 1,
+  "workspace_dev": "Q",
   "workspace_media": 9,
   "apps": [
     "Cursor",
@@ -16,5 +16,16 @@
   "color_mode": "dark",
   "states": {
     "Tony Stark": {}
+  },
+  "motion": {
+    "camera_index": 0,
+    "templates_dir": "motions",
+    "compare_frames": 32,
+    "distance_threshold": 0.26,
+    "cooldown_sec": 3.0,
+    "record_seconds": 2.2,
+    "match_stride": 2,
+    "buffer_max_frames": 90,
+    "actions": {}
   }
 }

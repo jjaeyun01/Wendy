@@ -10,6 +10,7 @@ MENU_ITEMS = [
     "Apps",
     "Color Mode",
     "States",
+    "Motion",
 ]
 
 JOKES = [
@@ -131,6 +132,16 @@ def run(stdscr):
                     message = "Same as before. No judgment."
                 p = make_palette(color_mode)
                 is_update = True
+            elif selected == "Motion":
+                from config.motion import run_motion
+                changed = run_motion(stdscr, color_mode)
+                p = make_palette(color_mode)
+                if changed:
+                    message = "Motion configuration updated."
+                    is_update = True
+                else:
+                    message = random.choice(JOKES)
+                    is_update = False
         elif key == ord("q"):
             break
 
