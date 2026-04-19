@@ -61,6 +61,8 @@ def main() -> None:
         if not wake.start():
             print("  ⚠  Wake word unavailable — clap detection always active")
             wake = None
+    else:
+        print("  ℹ  Wake word disabled in config — clap detection always active")
 
     run_forever(wake=wake)
 
