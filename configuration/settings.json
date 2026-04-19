@@ -12,121 +12,47 @@
       "workspaces": {
         "1": {
           "apps": [
-            "browser"
+            "ide"
           ],
-          "browser_url": "https://github.com/jjaeyun01/Wendy",
+          "browser_url": "",
           "music_url": ""
         },
         "2": {
-          "apps": [
-            "music",
-            "terminal"
-          ],
-          "browser_url": "",
-          "music_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
-          "layout": {
-            "n": 2,
-            "id": 1,
-            "slots": {
-              "A": "music",
-              "B": "terminal"
-            }
-          }
-        },
-        "3": {
-          "apps": [
-            "ide",
-            "terminal"
-          ],
-          "browser_url": "",
-          "music_url": "",
-          "layout": {
-            "n": 2,
-            "id": 2,
-            "slots": {
-              "B": "ide",
-              "A": "terminal"
-            }
-          }
-        },
-        "9": {
           "apps": [],
           "browser_url": "",
           "music_url": ""
         },
-        "4": {
+        "3": {
+          "apps": [],
+          "browser_url": "",
+          "music_url": ""
+        },
+        "9": {
           "apps": [
-            "browser",
-            "ide",
-            "terminal"
+            "music"
           ],
-          "browser_url": "https://github.com/twoSquaredHoon?tab=repositories",
-          "music_url": "",
-          "layout": {
-            "n": 3,
-            "id": 1,
-            "slots": {
-              "A": "browser",
-              "B": "ide",
-              "C": "terminal"
-            }
-          }
+          "browser_url": "",
+          "music_url": "https://www.youtube.com/watch?v=-85-sjG_BiQ&list=RD-85-sjG_BiQ&start_radio=1"
+        },
+        "4": {
+          "apps": [],
+          "browser_url": "",
+          "music_url": ""
         },
         "5": {
-          "apps": [
-            "browser",
-            "ide",
-            "terminal"
-          ],
-          "browser_url": "https://github.com/twoSquaredHoon?tab=repositories",
-          "music_url": "",
-          "layout": {
-            "n": 3,
-            "id": 2,
-            "slots": {
-              "A": "browser",
-              "B": "ide",
-              "C": "terminal"
-            }
-          }
+          "apps": [],
+          "browser_url": "",
+          "music_url": ""
         },
         "6": {
-          "apps": [
-            "browser",
-            "ide",
-            "terminal"
-          ],
-          "browser_url": "https://github.com/twoSquaredHoon?tab=repositories",
-          "music_url": "",
-          "layout": {
-            "n": 3,
-            "id": 3,
-            "slots": {
-              "A": "browser",
-              "B": "ide",
-              "C": "terminal"
-            }
-          }
+          "apps": [],
+          "browser_url": "",
+          "music_url": ""
         },
         "7": {
-          "apps": [
-            "browser",
-            "ide",
-            "music",
-            "terminal"
-          ],
-          "browser_url": "https://github.com/twoSquaredHoon?tab=repositories",
-          "music_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
-          "layout": {
-            "n": 4,
-            "id": 1,
-            "slots": {
-              "A": "browser",
-              "B": "ide",
-              "C": "music",
-              "D": "terminal"
-            }
-          }
+          "apps": [],
+          "browser_url": "",
+          "music_url": ""
         }
       },
       "final_workspace": "1",
