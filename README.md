@@ -124,7 +124,21 @@ Ensure `wendy.sh` is executable and on the expected path (the detector typically
 
 ## Clap detector tuning
 
-Edit constants in `clap_detector.py` (e.g. threshold, window between claps, cooldown) if Wendy triggers too often or misses claps.
+When you use **`wendy_daemon.py`** or run **`clap_detector.py`** directly, tune thresholds and timing in **`config.json`** under **`settings`** (for example `clap_threshold`, `clap_interval_ms`, `visual_clap_require`).
+
+For the simpler **`wendy.sh`** launcher flow, preferences still come from **`settings.json`** and the notes in this README above.
+
+---
+
+## Optional: Wake word, CNN, and daemon
+
+The repo also includes **`wendy_daemon.py`**, **`wake_word.py`**, **`state_runner.py`**, and **`config.json`** for a fuller stack: offline wake word (Vosk) → mic double-clap (CNN + FFT fallback) + optional camera confirmation → workspace automation.
+
+```bash
+python3 wendy_daemon.py
+```
+
+Install the extra dependencies in `requirements.txt` (`opencv-python`, `vosk`, `torch`, …). Download a **Vosk** English model into the repo root if you enable the wake word. CNN weights can live under `ml/models/` (see `ml/`).
 
 ---
 
@@ -133,7 +147,7 @@ Edit constants in `clap_detector.py` (e.g. threshold, window between claps, cool
 - macOS (app discovery and `open -a` are built for Apple’s layout)
 - [AeroSpace](https://github.com/nikitabobko/AeroSpace) installed with `aerospace` on your `PATH`
 - Python 3.10+ recommended (project uses modern typing)
-- Packages: `sounddevice`, `numpy` (see `requirements.txt`)
+- Packages: `sounddevice`, `numpy`, plus optional `opencv-python`, `vosk`, `torch` for the daemon / CNN path (see `requirements.txt`)
 
 ---
 
