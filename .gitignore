@@ -8,6 +8,8 @@ __pycache__/
 *.pyo
 
 # Vosk speech models (large, download separately)
+models/vosk/vosk-model-*/
+# Legacy: models unpacked at repo root
 vosk-model-*/
 
 # ML training data (user-specific, record with ml/collect.py)

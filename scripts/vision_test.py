@@ -3,7 +3,7 @@ Wendy — visual clap detector live test.
 
 Usage
 -----
-    python3 vision_test.py
+    python3 scripts/vision_test.py
 
 카메라 앞에서 박수를 치면:
     👁  Visual clap (dist 0.12)  ← 감지됨
@@ -18,7 +18,7 @@ import time
 import threading
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
