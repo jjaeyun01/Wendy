@@ -13,7 +13,13 @@
       "youtube_simulate_play": false,
       "visual_clap_require": true,
       "visual_clap_window_sec": 1.5,
-      "visual_clap_distance": 0.30
+      "visual_clap_distance": 0.30,
+      "wake_word": {
+        "enabled": true,
+        "word": "wendy",
+        "aliases": ["when the", "when d", "wendi"],
+        "arm_seconds": 10
+      }
     },
     "profiles": [
       {

@@ -52,9 +52,17 @@ def main() -> None:
         return
     if "--no-reinstall" in sys.argv:
         pass
+
+    from wake_word import build_from_config
     from clap_detector import run_forever
 
-    run_forever()
+    wake = build_from_config()
+    if wake is not None:
+        if not wake.start():
+            print("  ⚠  Wake word unavailable — clap detection always active")
+            wake = None
+
+    run_forever(wake=wake)
 
 
 if __name__ == "__main__":

@@ -113,6 +113,8 @@ class VisualClapDetector:
 
         prev_gray = None
         was_far = False
+        last_visual_clap = 0.0
+        visual_cooldown = 0.8  # seconds between visual clap events
         kernel = np.ones((5, 5), np.uint8)
         warmup = 8  # skip first N frames while prev_gray stabilises
         debug_tick = 0
@@ -194,10 +196,13 @@ class VisualClapDetector:
                 was_far = True
 
             if was_far and dist < self._near:
-                with self._lock:
-                    self._last_event = time.time()
+                now_v = time.time()
+                if now_v - last_visual_clap >= visual_cooldown:
+                    with self._lock:
+                        self._last_event = now_v
+                    last_visual_clap = now_v
+                    print(f"  👁  Visual clap (dist {dist:.2f})")
                 was_far = False
-                print(f"  👁  Visual clap (dist {dist:.2f})")
 
         cap.release()
 
@@ -218,7 +223,11 @@ def _is_clap_spectrum(block: np.ndarray, sample_rate: int) -> bool:
     return (high / total) > 0.18  # claps: ~0.35–0.60, voice: ~0.05–0.15
 
 
-def run_forever() -> None:
+def run_forever(wake=None) -> None:
+    """
+    wake: optional WakeWordDetector. When provided, clap detection only fires
+    while the detector is armed (i.e. after the wake word was heard).
+    """
     s = _load_settings()
 
     threshold   = float(s["clap_threshold"])
@@ -257,6 +266,12 @@ def run_forever() -> None:
 
         now = time.time()
         if now - last_trigger < trigger_guard:
+            return
+
+        # Wake-word gate: ignore claps until "Wendy" has been said
+        if wake is not None and not wake.is_armed():
+            if float(np.max(np.abs(indata))) > threshold:
+                print("  🔒 Clap blocked — say 'Wendy' first")
             return
 
         amplitude = float(np.max(np.abs(indata)))
@@ -307,6 +322,8 @@ def run_forever() -> None:
         last_trigger = now
         clap_count   = 0
         env_high     = True
+        if wake is not None:
+            wake.disarm()
         subprocess.Popen([sys.executable, str(STATE_RUNNER)], cwd=str(ROOT))
 
     mode = "mic + camera" if (visual and visual.available) else "mic only"
