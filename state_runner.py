@@ -165,6 +165,30 @@ def _list_windows_bundle_all_monitors(bundle_id: str) -> list:
     return data if isinstance(data, list) else []
 
 
+def _list_windows_on_workspace(bundle_id: str, workspace: str) -> list:
+    out = subprocess.run(
+        [
+            "aerospace",
+            "list-windows",
+            "--workspace",
+            workspace,
+            "--app-bundle-id",
+            bundle_id,
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(ROOT),
+    )
+    if out.returncode != 0:
+        return []
+    try:
+        data = json.loads(out.stdout or "[]")
+    except json.JSONDecodeError:
+        return []
+    return data if isinstance(data, list) else []
+
+
 def _ensure_bundle_on_workspace(
     workspace: str,
     bundle_id: str,
@@ -172,32 +196,23 @@ def _ensure_bundle_on_workspace(
     cmd_delay: float,
 ) -> None:
     """
-    If the app already has windows on any monitor, move them to `workspace`.
-    Otherwise run `open_cmd` (macOS `open`, not aerospace).
+    Open a new instance of the app on `workspace`.
+    Never moves windows from other workspaces — each workspace gets its own instance.
+    Skips if the app already has a window on the target workspace.
     """
     if bundle_id == "com.apple.finder":
         _finder_ensure_on_workspace(workspace, cmd_delay)
         return
 
-    rows = _list_windows_bundle_all_monitors(bundle_id)
-    if rows:
-        for row in rows:
-            wid = row.get("window-id")
-            if wid is None:
-                continue
-            print(
-                f"     move window {wid} ({row.get('app-name', '?')}) → workspace {workspace}"
-            )
-            _run_aerospace(
-                ["move-node-to-workspace", "--window-id", str(wid), workspace]
-            )
-        time.sleep(cmd_delay)
+    existing = _list_windows_on_workspace(bundle_id, workspace)
+    if existing:
+        print(f"     {bundle_id} already on workspace {workspace} — skipping")
         return
 
     oc = open_cmd.strip()
     if oc:
-        print(f"     open (no window yet): {oc}")
-        subprocess.run(shlex.split(oc), cwd=str(ROOT))
+        print(f"     open new instance: {oc}")
+        subprocess.Popen(shlex.split(oc), cwd=str(ROOT), start_new_session=True)
         time.sleep(cmd_delay)
 
 
