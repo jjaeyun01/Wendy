@@ -18,10 +18,7 @@ os.environ.setdefault("ESCDELAY", "0")
 CATEGORIES = ["Browser", "IDE", "Music", "Notes", "Terminal"]
 WORKSPACE_IDS = [str(i) for i in range(1, 10)] + [chr(c) for c in range(ord("A"), ord("Z") + 1)]
 
-# ── Layout UI: config/layout.py (pick_layout_1–4, assign_slots_*). ─
-
-# After picking a workspace: alphabetical — Contents (app toggles + URLs), Layouts (tile picker).
-WORKSPACE_VIEWS = ["Contents", "Layouts"]
+WORKSPACE_VIEWS = ["Contents", "Layouts", "Set Final Screen"]
 
 
 def run_states(stdscr, color_mode: str) -> bool:
@@ -67,7 +64,6 @@ def run_states(stdscr, color_mode: str) -> bool:
     adding = False
     input_buf = ""
 
-    # ── States list screen ────────────────────────────────────────────────────
     while True:
         h, w = stdscr.getmaxyx()
         list_rows = (h - 4) // 2
@@ -153,10 +149,7 @@ def run_states(stdscr, color_mode: str) -> bool:
 
 
 def _run_workspaces(stdscr, color_mode, state_name, p, safe, draw_header) -> bool:
-    # ── Workspace list screen ─────────────────────────────────────────────────
-    # WORKSPACE_IDS = ["1".."9", "A".."Z"]
-    # Show them in a grid, highlight selected ones (have apps assigned)
-    COLS = 9  # 9 per row looks clean: 1-9 on first row, A-I, J-R, S-Z
+    COLS = 9
     cursor = 0
     changed = False
 
@@ -195,7 +188,6 @@ def _run_workspaces(stdscr, color_mode, state_name, p, safe, draw_header) -> boo
 
             safe(y, x, ws_id, attr)
 
-        # Show current workspace summary bottom right
         current_ws_id = WORKSPACE_IDS[cursor]
         current_apps = workspaces.get(current_ws_id, {}).get("apps", [])
         summary = f"{current_ws_id}:  " + ("  ".join(a.capitalize() for a in current_apps) if current_apps else "empty")
@@ -226,8 +218,8 @@ def _run_workspaces(stdscr, color_mode, state_name, p, safe, draw_header) -> boo
 
 
 def _run_workspace_menu(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) -> bool:
-    """Contents vs Layouts (alphabetical). Esc from Contents returns here; esc from menu returns to grid."""
-    cursor = 0  # Contents — first row
+    """Contents, Layouts, Set Final Screen (alphabetical). Esc returns to grid."""
+    cursor = 0
     changed = False
     while True:
         h, w = stdscr.getmaxyx()
@@ -255,9 +247,10 @@ def _run_workspace_menu(stdscr, color_mode, state_name, ws_id, p, safe, draw_hea
             if WORKSPACE_VIEWS[cursor] == "Layouts":
                 if _run_workspace_layouts(stdscr, state_name, ws_id, p, safe, draw_header):
                     changed = True
-            else:
+            elif WORKSPACE_VIEWS[cursor] == "Contents":
                 if _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header):
                     changed = True
+            # "Set Final Screen" — intentionally does nothing
         elif key in (ord("q"), 27):
             return changed
 
@@ -455,7 +448,6 @@ def _run_workspace_layouts(stdscr, state_name, ws_id, p, safe, draw_header) -> b
 
 
 def _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) -> bool:
-    # ── App toggle screen for one workspace ───────────────────────────────────
     settings = load_settings()
     state = settings.get("states", {}).get(state_name, {})
     workspaces = state.get("workspaces", {})
@@ -469,7 +461,7 @@ def _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) ->
     cursor = 0
     url_input = False
     url_buf = ""
-    url_target = None  # "browser" or "music"
+    url_target = None
 
     BROWSER_HINTS = ["chrome", "firefox", "safari", "brave", "arc", "edge", "opera", "vivaldi"]
 
@@ -499,7 +491,6 @@ def _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) ->
             else:
                 safe(row, 4, cat, p["NORM"])
 
-            # Show URL inline after Browser or Music (if music app is a browser)
             if not url_input:
                 if cat.lower() == "browser" and browser_url:
                     max_len = w - (4 + len(cat) + 2) - 2
