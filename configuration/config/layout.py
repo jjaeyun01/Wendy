@@ -1,5 +1,8 @@
 """
 Workspace layout pickers for 1–4 Contents apps (tile ASCII + region slot assignment).
+Layout definitions (names, ASCII art, ids) load from configuration/settings.json
+→ layout_catalog; see layout_catalog.defaults.json if the key is missing.
+
 Used from config/states.py — palette, safe, draw_header passed in.
 """
 
@@ -8,6 +11,9 @@ from __future__ import annotations
 import curses
 import os
 from collections.abc import Callable
+from typing import Any
+
+from config.settings_store import load_settings
 
 os.environ.setdefault("ESCDELAY", "0")
 
@@ -37,108 +43,24 @@ def _layout_id_eq(a: int | str | None, b: int | str | None) -> bool:
         return False
 
 
-LAYOUTS_1 = [
-    {
-        "id": 1,
-        "name": "Full",
-        "art": [
-            "+-------------------------+",
-            "|                         |",
-            "|                         |",
-            "|            A            |",
-            "|                         |",
-            "|                         |",
-            "+-------------------------+",
-        ],
-    },
-]
-
-LAYOUTS_2 = [
-    {
-        "id": 1,
-        "name": "Side by side",
-        "art": [
-            "+------------+------------+",
-            "|            |            |",
-            "|      A     |      B     |",
-            "|            |            |",
-            "|            |            |",
-            "|            |            |",
-            "+------------+------------+",
-        ],
-    },
-    {
-        "id": 2,
-        "name": "Stacked",
-        "art": [
-            "+-------------------------+",
-            "|                         |",
-            "|            A            |",
-            "+-------------------------+",
-            "|                         |",
-            "|            B            |",
-            "+-------------------------+",
-        ],
-    },
-]
-
-LAYOUTS_3 = [
-    {
-        "id": 1,
-        "name": "Equal Thirds",
-        "art": [
-            "+--------+-------+--------+",
-            "|        |       |        |",
-            "|   A    |   B   |   C    |",
-            "|        |       |        |",
-            "|        |       |        |",
-            "|        |       |        |",
-            "+--------+-------+--------+",
-        ],
-    },
-    {
-        "id": 2,
-        "name": "Side + Stacked",
-        "art": [
-            "+------------+------------+",
-            "|            |     B      |",
-            "|     A      |            |",
-            "|            +------------+",
-            "|            |     C      |",
-            "|            |            |",
-            "+------------+------------+",
-        ],
-    },
-    {
-        "id": 3,
-        "name": "Stacked + Side",
-        "art": [
-            "+------------+------------+",
-            "|     B      |            |",
-            "|            |     A      |",
-            "+------------+            |",
-            "|     C      |            |",
-            "|            |            |",
-            "+------------+------------+",
-        ],
-    },
-]
-
-LAYOUTS_4 = [
-    {
-        "id": 1,
-        "name": "2×2 Grid",
-        "art": [
-            "+------------+------------+",
-            "|      A     |      B     |",
-            "|            |            |",
-            "+------------+------------+",
-            "|      C     |      D     |",
-            "|            |            |",
-            "+------------+------------+",
-        ],
-    },
-]
+def _layout_list_for_count(n: int) -> list[dict[str, Any]]:
+    """Load layout variants for n apps from settings.json → layout_catalog['1'..'4']."""
+    s = load_settings()
+    cat = s.get("layout_catalog") or {}
+    key = str(max(1, min(int(n), 4)))
+    raw = cat.get(key)
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for lo in raw:
+        if not isinstance(lo, dict):
+            continue
+        if not all(k in lo for k in ("id", "name", "art")):
+            continue
+        if not isinstance(lo.get("art"), list):
+            continue
+        out.append(lo)
+    return out
 
 
 def _a_tag_lines(
@@ -217,6 +139,8 @@ def _pick_layout_screen(
     apps: list[str] | None,
     tag_lines_fn: Callable[[dict[str, str] | None, list[str] | None], list[str]],
 ) -> int | None:
+    if not layouts:
+        return None
     selected = 0
     start_id = cursor_start_id if cursor_start_id is not None else current_layout_id
     if start_id is not None:
@@ -296,7 +220,7 @@ def pick_layout_1(
         safe,
         draw_header,
         header_title,
-        LAYOUTS_1,
+        _layout_list_for_count(1),
         current_layout_id=current_layout_id,
         cursor_start_id=cursor_start_id,
         slots=slots,
@@ -323,7 +247,7 @@ def pick_layout_2(
         safe,
         draw_header,
         header_title,
-        LAYOUTS_2,
+        _layout_list_for_count(2),
         current_layout_id=current_layout_id,
         cursor_start_id=cursor_start_id,
         slots=slots,
@@ -350,7 +274,7 @@ def pick_layout_3(
         safe,
         draw_header,
         header_title,
-        LAYOUTS_3,
+        _layout_list_for_count(3),
         current_layout_id=current_layout_id,
         cursor_start_id=cursor_start_id,
         slots=slots,
@@ -377,7 +301,7 @@ def pick_layout_4(
         safe,
         draw_header,
         header_title,
-        LAYOUTS_4,
+        _layout_list_for_count(4),
         current_layout_id=current_layout_id,
         cursor_start_id=cursor_start_id,
         slots=slots,

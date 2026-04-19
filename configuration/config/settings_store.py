@@ -8,6 +8,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SETTINGS_PATH = REPO_ROOT / "settings.json"
+LAYOUT_CATALOG_DEFAULTS_PATH = REPO_ROOT / "layout_catalog.defaults.json"
 
 # Keys written under "apps" (lowercase in JSON).
 APP_KEYS = ("browser", "ide", "music", "notes", "terminal")
@@ -17,6 +18,17 @@ def _empty_apps() -> dict[str, str]:
     return {k: "" for k in APP_KEYS}
 
 
+def _layout_catalog_defaults() -> dict[str, Any]:
+    """Fallback when settings.json has no layout_catalog (repo ships layout_catalog.defaults.json)."""
+    if not LAYOUT_CATALOG_DEFAULTS_PATH.is_file():
+        return {}
+    try:
+        raw = json.loads(LAYOUT_CATALOG_DEFAULTS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return raw if isinstance(raw, dict) else {}
+
+
 def normalize_settings(raw: dict[str, Any]) -> dict[str, Any]:
     """Merge legacy top-level keys and old list-shaped `apps` into the canonical shape."""
     out: dict[str, Any] = {
@@ -24,6 +36,12 @@ def normalize_settings(raw: dict[str, Any]) -> dict[str, Any]:
         "apps": _empty_apps(),
         "states": dict(raw.get("states") or {}),
     }
+
+    lc = raw.get("layout_catalog")
+    if isinstance(lc, dict) and lc:
+        out["layout_catalog"] = lc
+    else:
+        out["layout_catalog"] = _layout_catalog_defaults()
 
     apps = raw.get("apps")
     if isinstance(apps, dict):
@@ -53,11 +71,15 @@ def load_settings() -> dict[str, Any]:
 
 
 def save_settings(settings: dict[str, Any]) -> None:
-    """Write only color_mode, apps, and states (canonical settings.json)."""
+    """Write color_mode, apps, states, and layout_catalog (canonical settings.json)."""
     merged = normalize_settings(settings)
+    lc = merged.get("layout_catalog")
+    if not isinstance(lc, dict) or not lc:
+        lc = _layout_catalog_defaults()
     payload = {
         "color_mode": merged["color_mode"],
         "apps": {k: merged["apps"].get(k, "") for k in APP_KEYS},
         "states": merged["states"],
+        "layout_catalog": lc,
     }
-    SETTINGS_PATH.write_text(json.dumps(payload, indent=2) + "\n")
+    SETTINGS_PATH.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
