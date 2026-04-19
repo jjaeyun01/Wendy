@@ -3,6 +3,15 @@
   "browser": "Firefox",
   "workspace_dev": 1,
   "workspace_media": 9,
-  "apps": ["Cursor", "Terminal", "Finder"],
-  "trigger": "clap"
+  "apps": [
+    "Cursor",
+    "Terminal",
+    "Finder"
+  ],
+  "trigger": "clap",
+  "ide": "Cursor",
+  "music": "Firefox",
+  "notes": "Obsidian",
+  "terminal": "Ghostty",
+  "color_mode": "dark"
 }
