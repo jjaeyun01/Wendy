@@ -5,7 +5,7 @@
     "ide": "Cursor",
     "music": "Firefox",
     "notes": "Obsidian",
-    "terminal": "Terminal"
+    "terminal": "Ghostty"
   },
   "states": {
     "Tony Stark": {
@@ -34,9 +34,20 @@
           }
         },
         "3": {
-          "apps": [],
+          "apps": [
+            "ide",
+            "terminal"
+          ],
           "browser_url": "",
-          "music_url": ""
+          "music_url": "",
+          "layout": {
+            "n": 2,
+            "id": 2,
+            "slots": {
+              "B": "ide",
+              "A": "terminal"
+            }
+          }
         },
         "9": {
           "apps": [],
