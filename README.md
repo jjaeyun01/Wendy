@@ -1,43 +1,25 @@
-# 🤖 Wendy
+# Wendy
 
-> Your personal Jarvis — clap twice, and Wendy sets up your entire workspace automatically.
+> Say her name. Clap twice. Your entire workspace appears.
 
----
-
-## What is Wendy?
-
-Wendy is a Mac automation assistant that listens for two claps via your microphone and instantly launches your development environment. It opens your chosen apps on your dev Aerospace workspace, and plays a YouTube video in your browser on a second workspace — all hands-free. Everything is configured via a `settings.json` file.
+Wendy is a macOS automation assistant inspired by Jarvis. She listens for her name, waits for a double clap confirmed by your camera, then instantly launches your development environment — music, IDE, terminal, and file manager — all hands-free.
 
 ---
 
-## Project Structure
+## Demo
 
 ```
-wendy/
-├── main.py                  # Entry point — launches the config TUI
-├── splash.py                # Terminal splash screen shown on startup
-├── wendy.sh                 # Reads settings.json and launches everything
-├── settings.json            # Generated config: YouTube URL, workspaces, apps, browser
-├── requirements.txt         # Python dependencies
-│
-├── config/                  # Config TUI — all configuration screens
-│   ├── __init__.py
-│   ├── apps.py              # Assign default apps per category
-│   ├── colormode.py         # Switch light / dark mode
-│   ├── colorpicker.py       # Initial color mode picker on first launch
-│   ├── palette.py           # Color definitions — single source of truth
-│   └── states.py            # Manage named workspace states
-│
-├── listeners/
-│   └── clap_detector.py     # Mic input → detects 2 claps → triggers wendy.sh
-│
-├── scenes/
-│   ├── workspace1.sh        # Opens dev apps on workspace 1
-│   └── workspace9.sh        # Opens YouTube in Firefox on workspace 9
-│
-└── utils/
-    ├── aerospace.sh         # Aerospace workspace helper functions
-    └── notify.sh            # macOS notifications for Wendy feedback
+You: "Hey Wendy"
+  🎤 Wake word detected — armed for 10s
+
+You: *clap clap*
+  👁  Visual clap detected
+  ⬤  Clap 1  ⬤  Clap 2
+  ✦  Launching workspace...
+
+Result:
+  Workspace Q  →  Cursor (left) | Finder (top right) / Terminal (bottom right)
+  Workspace 9  →  YouTube music in Firefox
 ```
 
 ---
@@ -45,142 +27,216 @@ wendy/
 ## How It Works
 
 ```
-Microphone
-   └── clap_detector.py
-         └── hears 2 claps
-               └── wendy.sh
-                     ├── reads settings.json
-                     ├── shows splash.py
-                     ├── workspace 1 → Cursor + Terminal + Finder
-                     └── workspace 9 → YouTube in Firefox
+wake_word.py        — Vosk (offline STT) listens for "Wendy"
+      ↓ armed
+clap_detector.py    — mic + camera, both must confirm
+      ├── 🔊 Audio:  CNN on Mel spectrogram  (falls back to FFT if no model)
+      └── 👁  Vision: frame-differencing, two hands converging
+                    ↓ double clap confirmed
+state_runner.py     — switches workspaces, opens apps, arranges windows
 ```
 
----
+### Three-layer trigger
 
-## Trigger Options
-
-Wendy is triggered by a **double clap** detected via your Mac's microphone. The clap detector listens for two short loud audio spikes within ~1.2 seconds of each other, with debouncing and a cooldown to prevent false triggers.
-
-A **keyboard hotkey fallback** is also recommended for noisy environments.
-
-| Method | Pros | Cons |
+| Layer | Technology | Purpose |
 |---|---|---|
-| 🎤 Mic / Clap Detection | Hands-free, cool factor | Can false-trigger in noisy rooms |
-| ⌨️ Hotkey | Reliable, zero false positives | Less hands-free |
-| 🖱️ Mouse Gesture | No accidental triggers | Must be at desk |
-| 📱 iPhone Shortcut | Works from across the room | Extra setup required |
-| ⌚ Apple Watch tap | Wrist-based, very Jarvis | Needs Watch + Shortcuts |
+| Wake word | Vosk offline STT | Activates listening — only responds after "Wendy" |
+| Audio clap | CNN + Mel spectrogram | Distinguishes real claps from voice and noise |
+| Visual clap | OpenCV frame differencing | Ensures hands are actually clapping, not ambient noise |
 
-**Recommended:** Clap detection as primary + hotkey as fallback.
+All three must align within a time window to fire. This virtually eliminates false triggers.
 
 ---
 
-## Tech Stack
+## Project Structure
 
-- **Shell (Bash)** — workspace launching and app control
-- **Python** — config TUI, splash screen, and clap/audio detection via microphone
-- **Aerospace** — macOS tiling window manager for workspace switching
-- `curses` — terminal UI for the config screens
-- `sounddevice` — real-time microphone input
-- `numpy` — audio amplitude spike detection
-
----
-
-## Configuration
-
-Wendy reads all settings from `settings.json` at launch. Generate this file using the config TUI (`python3 main.py`), or edit it manually:
-
-```json
-{
-  "color_mode": "dark",
-  "browser": "Firefox",
-  "youtube_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
-  "workspace_dev": 1,
-  "workspace_media": 9,
-  "apps": {
-    "browser": "Firefox",
-    "ide": "Cursor",
-    "music": "Spotify",
-    "notes": "Obsidian",
-    "terminal": "Ghostty"
-  },
-  "states": {},
-  "trigger": "clap"
-}
 ```
-
-| Key | Description |
-|---|---|
-| `color_mode` | `dark` or `light` — set via the config TUI |
-| `youtube_url` | The YouTube link to open on launch |
-| `browser` | Browser app name (Firefox, Safari, Arc, etc.) |
-| `workspace_dev` | Aerospace workspace number for dev apps |
-| `workspace_media` | Aerospace workspace number for YouTube |
-| `apps` | Default app per category, set via the config TUI |
-| `states` | Named workspace states (triggers and actions TBD) |
-| `trigger` | `clap`, `hotkey`, or `both` |
-
----
-
-## Setup
-
-### 1. Install dependencies
-
-```bash
-pip install -r requirements.txt
+Wendy/
+├── wendy_daemon.py          # Main entry point — wires everything together
+├── wake_word.py             # "Wendy" wake word detection (Vosk)
+├── clap_detector.py         # Mic + camera double-clap detection
+├── state_runner.py          # Workspace launcher (Aerospace)
+├── config.json              # All tuneable settings
+│
+├── ml/                      # CNN clap classifier
+│   ├── mel.py               # Pure-numpy Mel spectrogram
+│   ├── clap_cnn.py          # Model architecture + real-time inference
+│   ├── collect.py           # Record training samples (clap / noise)
+│   ├── train.py             # Train the CNN
+│   ├── test.py              # Live test the trained model
+│   └── models/              # Saved model weights (.pt)
+│
+├── triggers/                # Extensible gesture trigger system
+│   ├── base.py              # GestureTrigger ABC + GestureEngine
+│   ├── dtw.py               # DTW matching + CLI recorder
+│   ├── audio_dtw.py         # MFCC-based audio DTW trigger
+│   └── templates/           # Saved gesture templates (.json)
+│
+└── listeners/
+    ├── motion_detector.py   # MediaPipe gesture recorder/matcher
+    └── motion_features.py   # Hand landmark feature extraction
 ```
-
-### 2. Make scripts executable
-
-```bash
-chmod +x wendy.sh scenes/workspace1.sh scenes/workspace9.sh
-```
-
-### 3. Configure Wendy
-
-```bash
-python3 main.py
-```
-
-This launches the config TUI where you can set your color mode, default apps, and workspace states. Settings are saved to `settings.json`.
-
-### 4. Grant microphone permission
-
-Make sure your terminal app has microphone access:
-
-**System Settings → Privacy & Security → Microphone → enable for Terminal**
-
-### 5. Run Wendy
-
-```bash
-python3 listeners/clap_detector.py
-```
-
-Then clap twice — Wendy will show the splash screen and handle the rest.
-
----
-
-## Clap Detector Settings
-
-You can tune the detector in `listeners/clap_detector.py`:
-
-| Variable | Default | Description |
-|---|---|---|
-| `THRESHOLD` | `0.25` | Amplitude level to count as a clap (0.0–1.0) |
-| `CLAP_WINDOW` | `1.2s` | Max time between clap 1 and clap 2 |
-| `COOLDOWN` | `3.0s` | Ignore period after a successful trigger |
-
-If Wendy triggers too easily, raise `THRESHOLD`. If she misses claps, lower it.
 
 ---
 
 ## Requirements
 
-- macOS
-- [Aerospace](https://github.com/nikitabobko/AeroSpace) window manager installed and configured
-- `aerospace` CLI available in your PATH (check with `which aerospace`)
-- Python 3.8+
-- Cursor, Terminal, Finder (or any apps listed in `settings.json`)
+- macOS (Apple Silicon or Intel)
+- Python 3.11+ (Python 3.13 supported — mediapipe excluded)
+- [AeroSpace](https://github.com/nikitabobko/AeroSpace) window manager
+
+---
+
+## Installation
+
+### 1. Install Python dependencies
+
+```bash
+pip install -r requirements.txt
+pip install torch
+```
+
+### 2. Download Vosk speech model
+
+```bash
+# Download and unzip into the repo root
+# https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.22.zip
+# Result: Wendy/vosk-model-small-en-us-0.22/
+```
+
+### 3. Grant permissions
+
+**System Settings → Privacy & Security**
+
+| Permission | Required by |
+|---|---|
+| Microphone | wake word + clap detection |
+| Camera | visual clap detection |
+| Accessibility | AeroSpace window arrangement |
+
+### 4. Configure workspaces
+
+Edit `config.json` to set your AeroSpace workspace names, apps, and YouTube URL:
+
+```json
+{
+  "profiles": [
+    {
+      "id": "dev-mode",
+      "workspace": "Q",
+      "layout": {
+        "relocatable_apps": [
+          { "bundle_id": "com.todesktop.230313mzl4w4u92", "open_cmd": "open -n /Applications/Cursor.app" },
+          { "bundle_id": "com.apple.Terminal",             "open_cmd": "open -n /System/Applications/Utilities/Terminal.app" },
+          { "bundle_id": "com.apple.finder",               "open_cmd": "open -a Finder" }
+        ]
+      }
+    },
+    {
+      "id": "jarvis-mode",
+      "workspace": "9",
+      "music": {
+        "youtube_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM",
+        "player": "firefox"
+      }
+    }
+  ]
+}
+```
+
+---
+
+## Running Wendy
+
+```bash
+python3 wendy_daemon.py
+```
+
+### Usage
+
+1. Say **"Wendy"** (or "Hey Wendy")
+2. Within 10 seconds, **clap twice** in front of your camera
+3. Watch your workspace assemble itself
+
+---
+
+## CNN Clap Classifier
+
+A pre-trained model is included in `ml/models/`. If you want to retrain it for your own microphone and environment:
+
+```bash
+# 1. Record clap samples (~30 minimum)
+python3 ml/collect.py clap
+# Press SPACE to record each sample, Q to finish
+
+# 2. Record noise samples (voice, typing, ambient sounds)
+python3 ml/collect.py noise
+
+# 3. Train
+python3 ml/train.py
+
+# 4. Test live
+python3 ml/test.py
+```
+
+The daemon automatically loads the most recently trained model. If no model is found, it falls back to FFT-based spectral detection.
+
+---
+
+## Custom Gesture Triggers (DTW)
+
+Add your own sound gestures without writing a new model:
+
+```bash
+# Record a finger-snap trigger (5 samples)
+python3 triggers/dtw.py record snap
+
+# See all saved triggers
+python3 triggers/dtw.py list
+
+# Test live
+python3 triggers/dtw.py test snap
+```
+
+Templates are saved to `triggers/templates/<name>.json`. Use in code:
+
+```python
+from triggers.audio_dtw import AudioDTWTrigger
+
+snap = AudioDTWTrigger.from_file("snap", action=lambda: print("snapped!"))
+# call snap.detect(audio_block) inside your audio callback
+```
+
+---
+
+## Tuning
+
+All settings are in `config.json` under `"settings"`:
+
+| Key | Default | Description |
+|---|---|---|
+| `clap_threshold` | `0.05` | Minimum amplitude to consider as a clap |
+| `clap_interval_ms` | `1500` | Max gap between clap 1 and clap 2 (ms) |
+| `post_trigger_guard_sec` | `25` | Deaf period after a successful trigger |
+| `visual_clap_require` | `true` | Require camera confirmation |
+| `visual_clap_distance` | `0.30` | How close hands must come (normalized) |
+| `visual_clap_window_sec` | `1.5` | Time window to match audio + visual |
+| `wake_word.word` | `"wendy"` | Wake word |
+| `wake_word.arm_seconds` | `10` | How long to listen after wake word |
+| `youtube_settle_sec` | `3` | Wait time after opening YouTube |
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|---|---|
+| Wake word | [Vosk](https://alphacephei.com/vosk/) offline STT |
+| Audio clap (CNN) | PyTorch · Mel spectrogram (pure numpy) |
+| Audio clap (fallback) | FFT spectral energy ratio |
+| Visual clap | OpenCV frame differencing |
+| Custom gestures | DTW (pure numpy) + MFCC |
+| Window management | [AeroSpace](https://github.com/nikitabobko/AeroSpace) |
 
 ---
 

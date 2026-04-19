@@ -9,8 +9,7 @@ vosk-model-*/
 # ML training data (user-specific, record with ml/collect.py)
 ml/data/
 
-# Trained model weights (large binary, regenerate with ml/train.py)
-ml/models/*.pt
+# Trained model weights are committed intentionally (ml/models/*.pt)
 
 # DTW gesture templates (user-specific, record with triggers/dtw.py)
 triggers/templates/*.json
