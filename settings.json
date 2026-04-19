@@ -34,20 +34,9 @@
           }
         },
         "3": {
-          "apps": [
-            "ide",
-            "terminal"
-          ],
+          "apps": [],
           "browser_url": "",
-          "music_url": "",
-          "layout": {
-            "n": 2,
-            "id": 2,
-            "slots": {
-              "A": "ide",
-              "B": "terminal"
-            }
-          }
+          "music_url": ""
         },
         "9": {
           "apps": [],
@@ -129,7 +118,6 @@
           }
         }
       }
-    },
-    "too cool for school": {}
+    }
   }
 }
