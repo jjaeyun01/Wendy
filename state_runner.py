@@ -95,13 +95,18 @@ def _ensure_bundle_on_workspace(workspace: str, bundle_id: str, cmd_delay: float
         return
 
     rows = _list_windows_bundle_all_monitors(bundle_id)
-    if rows:
-        for row in rows:
+    rows_to_move = [r for r in rows if r.get("workspace") != workspace]
+    if rows_to_move:
+        for row in rows_to_move:
             wid = row.get("window-id")
             if wid is None:
                 continue
             print(f"     move {row.get('app-name', '?')} → workspace {workspace}")
             _run_aerospace(["move-node-to-workspace", "--window-id", str(wid), workspace])
+        time.sleep(cmd_delay)
+        return
+    if rows:
+        # Windows exist but already on the right workspace
         time.sleep(cmd_delay)
         return
 
@@ -113,7 +118,7 @@ def _ensure_bundle_on_workspace(workspace: str, bundle_id: str, cmd_delay: float
 def _open_music_url(url: str) -> None:
     u = _youtube_url_with_autoplay(url)
     print(f"     music: Firefox → {u[:72]}{'…' if len(u) > 72 else ''}")
-    subprocess.Popen(["open", "-a", "Firefox", u], cwd=str(ROOT), start_new_session=True)
+    subprocess.Popen(["open", "-n", "-a", "Firefox", "--args", "--new-window", u], cwd=str(ROOT), start_new_session=True)
     time.sleep(1.0)
 
 
@@ -124,9 +129,15 @@ def _apply_workspace(workspace: str, ws_data: dict, settings: dict, cmd_delay: f
     _run_aerospace(["workspace", workspace])
     time.sleep(0.5)
 
-    # Open apps
+    # Open apps (skip browser/music — those are handled by URL opening below)
     apps = ws_data.get("apps", [])
+    browser_url = ws_data.get("browser_url", "").strip()
+    music_url = ws_data.get("music_url", "").strip()
     for app_key in apps:
+        if app_key == "browser" and browser_url:
+            continue
+        if app_key == "music" and music_url:
+            continue
         bundle_id = _get_bundle_id(settings, app_key)
         print(f"     app: {app_key} → {bundle_id or '(no bundle id)'}")
         _ensure_bundle_on_workspace(workspace, bundle_id, cmd_delay)
@@ -134,15 +145,49 @@ def _apply_workspace(workspace: str, ws_data: dict, settings: dict, cmd_delay: f
     # Open browser URL if present
     browser_url = ws_data.get("browser_url", "").strip()
     if browser_url:
-        browser_bundle = _get_bundle_id(settings, "browser")
         print(f"     browser: → {browser_url[:72]}{'…' if len(browser_url) > 72 else ''}")
-        subprocess.Popen(["open", "-b", browser_bundle, browser_url], cwd=str(ROOT), start_new_session=True)
+        # snapshot existing Firefox windows before opening
+        before = {r.get("window-id") for r in _list_windows_bundle_all_monitors("org.mozilla.firefox")}
+        subprocess.Popen(["open", "-n", "-a", "Firefox", "--args", "--new-window", browser_url], cwd=str(ROOT), start_new_session=True)
         time.sleep(1.0)
+        # move only the NEW firefox window to this workspace
+        after = _list_windows_bundle_all_monitors("org.mozilla.firefox")
+        for r in after:
+            wid = r.get("window-id")
+            if wid and wid not in before:
+                _run_aerospace(["move-node-to-workspace", "--window-id", str(wid), workspace])
 
     # Open music URL if present
     music_url = ws_data.get("music_url", "").strip()
     if music_url:
+        before = {r.get("window-id") for r in _list_windows_bundle_all_monitors("org.mozilla.firefox")}
         _open_music_url(music_url)
+        time.sleep(1.0)
+        after = _list_windows_bundle_all_monitors("org.mozilla.firefox")
+        for r in after:
+            wid = r.get("window-id")
+            if wid and wid not in before:
+                _run_aerospace(["move-node-to-workspace", "--window-id", str(wid), workspace])
+
+
+def _ws_sort_key(k: str) -> tuple:
+    if k.isdigit():
+        n = int(k)
+        return (0, n if n != 0 else 10)
+    return (1, k.lower())
+
+
+def _list_windows_on_workspace(ws_id: str) -> list[dict]:
+    out = subprocess.run(
+        ["aerospace", "list-windows", "--workspace", ws_id, "--json"],
+        capture_output=True, text=True, cwd=str(ROOT),
+    )
+    if out.returncode != 0:
+        return []
+    try:
+        return json.loads(out.stdout or "[]")
+    except json.JSONDecodeError:
+        return []
 
 
 def apply_state(user: str = "Tony Stark") -> None:
@@ -162,10 +207,10 @@ def apply_state(user: str = "Tony Stark") -> None:
     print(f"\n  Wendy — applying state for {user}")
     print(f"  Active workspaces: {list(active.keys())}\n")
 
-    # Step 1: clear only active workspaces to Z
+    # Step 1: move existing windows from active workspaces to Z
     _move_active_workspaces_to_z(list(active.keys()))
 
-    # Step 2: find music workspace (has music_url)
+    # Step 2: find music workspace
     music_ws = None
     for ws_id, ws_data in active.items():
         if ws_data.get("music_url", "").strip():
@@ -177,12 +222,6 @@ def apply_state(user: str = "Tony Stark") -> None:
         _apply_workspace(music_ws, active[music_ws], settings, cmd_delay)
 
     # Step 4: remaining workspaces in order (1-9, 0, a-z)
-    def _ws_sort_key(k: str) -> tuple:
-        if k.isdigit():
-            n = int(k)
-            return (0, n if n != 0 else 10)
-        return (1, k.lower())
-
     ordered = sorted(
         [k for k in active if k != music_ws],
         key=_ws_sort_key,
@@ -191,6 +230,7 @@ def apply_state(user: str = "Tony Stark") -> None:
         _apply_workspace(ws_id, active[ws_id], settings, cmd_delay)
 
     # Step 5: go to final workspace
+    time.sleep(1.0)
     print(f"\n  → Final workspace: {final_workspace}")
     _run_aerospace(["workspace", final_workspace])
 

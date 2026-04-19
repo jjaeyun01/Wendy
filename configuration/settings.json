@@ -46,15 +46,15 @@
           "music_url": ""
         },
         "4": {
+          "apps": [],
+          "browser_url": "",
+          "music_url": ""
+        },
+        "5": {
           "apps": [
             "browser"
           ],
           "browser_url": "https://comic.naver.com/index",
-          "music_url": ""
-        },
-        "5": {
-          "apps": [],
-          "browser_url": "",
           "music_url": ""
         },
         "6": {
@@ -66,6 +66,13 @@
           "apps": [],
           "browser_url": "",
           "music_url": ""
+        },
+        "8": {
+          "apps": [
+            "music"
+          ],
+          "browser_url": "",
+          "music_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1"
         }
       },
       "final_workspace": "4",
