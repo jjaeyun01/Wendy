@@ -558,8 +558,13 @@ def _run_ws_apps(stdscr, color_mode, state_name, ws_id, p, safe, draw_header) ->
     BROWSER_HINTS = ["chrome", "firefox", "safari", "brave", "arc", "edge", "opera", "vivaldi"]
 
     def music_is_browser(s):
-        app = s.get("apps", {}).get("music", "").lower()
-        return any(h in app for h in BROWSER_HINTS)
+        m = s.get("apps", {}).get("music")
+        if isinstance(m, dict):
+            parts = (m.get("name") or "", m.get("bundle_id") or "")
+            haystack = " ".join(parts).lower()
+        else:
+            haystack = str(m or "").lower()
+        return any(h in haystack for h in BROWSER_HINTS)
 
     while True:
         h, w = stdscr.getmaxyx()

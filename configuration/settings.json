@@ -18,8 +18,8 @@
       "bundle_id": "md.obsidian"
     },
     "terminal": {
-      "name": "Ghostty",
-      "bundle_id": "com.mitchellh.ghostty"
+      "name": "Terminal",
+      "bundle_id": "com.apple.Terminal"
     }
   },
   "states": {
@@ -36,24 +36,26 @@
           "music_url": ""
         },
         "3": {
-          "apps": [],
+          "apps": [
+            "ide"
+          ],
           "browser_url": "",
           "music_url": ""
         },
         "9": {
           "apps": [
-            "ide",
             "music",
+            "notes",
             "terminal"
           ],
           "browser_url": "",
           "music_url": "https://www.youtube.com/watch?v=-85-sjG_BiQ&list=RD-85-sjG_BiQ&start_radio=1",
           "layout": {
             "n": 3,
-            "id": 3,
+            "id": 1,
             "slots": {
-              "A": "ide",
-              "B": "music",
+              "A": "music",
+              "B": "notes",
               "C": "terminal"
             }
           }
