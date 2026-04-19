@@ -14,8 +14,8 @@
       "bundle_id": "org.mozilla.firefox"
     },
     "notes": {
-      "name": "Minecraft",
-      "bundle_id": "com.mojang.minecraftlauncher"
+      "name": "Notes",
+      "bundle_id": "com.apple.Notes"
     },
     "terminal": {
       "name": "Terminal",
@@ -69,13 +69,24 @@
         },
         "8": {
           "apps": [
-            "music"
+            "ide",
+            "music",
+            "notes"
           ],
           "browser_url": "",
-          "music_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1"
+          "music_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
+          "layout": {
+            "n": 3,
+            "id": 1,
+            "slots": {
+              "A": "ide",
+              "B": "music",
+              "C": "notes"
+            }
+          }
         }
       },
-      "final_workspace": "4",
+      "final_workspace": "2",
       "final_workspace_step": "Layouts"
     }
   },
