@@ -1,8 +1,7 @@
 import curses
-import json
 import os
-from pathlib import Path
 from config.palette import make_palette
+from config.settings_store import load_settings, save_settings
 
 os.environ.setdefault("ESCDELAY", "0")
 
@@ -10,22 +9,6 @@ MODES = [
     "Dark",
     "Light",
 ]
-
-SETTINGS_PATH = Path("settings.json")
-
-
-def load_settings() -> dict:
-    if SETTINGS_PATH.exists():
-        try:
-            return json.loads(SETTINGS_PATH.read_text())
-        except Exception:
-            pass
-    return {}
-
-
-def save_settings(settings: dict) -> None:
-    SETTINGS_PATH.write_text(json.dumps(settings, indent=2))
-
 
 def run_color_mode(stdscr, color_mode: str) -> bool:
     curses.curs_set(0)

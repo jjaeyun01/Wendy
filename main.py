@@ -131,7 +131,7 @@ def run(stdscr):
                     message = "Same as before. No judgment."
                 p = make_palette(color_mode)
                 is_update = True
-        elif key == ord("q"):
+        elif key in (ord("q"), 27):
             break
 
 if __name__ == "__main__":

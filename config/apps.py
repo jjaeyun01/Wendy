@@ -1,8 +1,8 @@
 import curses
-import json
 import os
 from pathlib import Path
 from config.palette import make_palette
+from config.settings_store import load_settings, save_settings
 
 os.environ.setdefault("ESCDELAY", "0")
 
@@ -21,22 +21,6 @@ CATEGORY_HINTS = {
     "Notes":    ["obsidian", "notion", "bear", "notes", "craft", "roam", "logseq", "evernote", "simplenote", "ulysses", "typora"],
     "Terminal": ["terminal", "iterm", "iterm2", "warp", "alacritty", "kitty", "hyper", "ghostty"],
 }
-
-SETTINGS_PATH = Path("settings.json")
-
-
-def load_settings() -> dict:
-    if SETTINGS_PATH.exists():
-        try:
-            return json.loads(SETTINGS_PATH.read_text())
-        except Exception:
-            pass
-    return {}
-
-
-def save_settings(settings: dict) -> None:
-    SETTINGS_PATH.write_text(json.dumps(settings, indent=2))
-
 
 def get_applications() -> list[str]:
     apps = set()
@@ -104,7 +88,7 @@ def run_apps(stdscr, color_mode: str) -> bool:
 
         for i, cat in enumerate(CATEGORIES):
             row = 3 + i * 2
-            current = settings.get(cat.lower(), "")
+            current = settings.get("apps", {}).get(cat.lower(), "")
             suffix = f"  {current}" if current else ""
             if cursor == i:
                 safe(row, 2, ">", p["RED"])
@@ -162,7 +146,9 @@ def run_apps(stdscr, color_mode: str) -> bool:
                     app_cursor = min(len(filtered) - 1, app_cursor + 1)
                 elif key in (curses.KEY_ENTER, 10, 13):
                     if filtered:
-                        settings[chosen_cat.lower()] = filtered[app_cursor]
+                        if "apps" not in settings:
+                            settings["apps"] = {}
+                        settings["apps"][chosen_cat.lower()] = filtered[app_cursor]
                         save_settings(settings)
                         changed = True
                     break

@@ -17,17 +17,48 @@ if [ ! -f "$SETTINGS" ]; then
   exit 1
 fi
 
-# ── Parse settings.json ─────────────────
-parse() {
-  python3 -c "import json,sys; d=json.load(open('$SETTINGS')); print($1)"
-}
+# ── Parse settings.json (nested apps + optional legacy keys) ─────────────────
+export WENDY_SETTINGS="$SETTINGS"
+eval "$(python3 <<'PY'
+import json
+import os
+from pathlib import Path
 
-YOUTUBE_URL=$(parse "d['youtube_url']")
-BROWSER=$(parse "d['browser']")
-WS_DEV=$(parse "d['workspace_dev']")
-WS_MEDIA=$(parse "d['workspace_media']")
-TRIGGER=$(parse "d['trigger']")
-APPS=$(parse "' '.join(d['apps'])")
+def sh_single(s: str) -> str:
+    return "'" + s.replace("'", "'\"'\"'") + "'"
+
+path = Path(os.environ["WENDY_SETTINGS"])
+raw = json.loads(path.read_text())
+
+youtube_url = raw.get("youtube_url") or "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1"
+workspace_dev = raw.get("workspace_dev", 1)
+workspace_media = raw.get("workspace_media", 9)
+trigger = raw.get("trigger", "clap")
+
+apps = raw.get("apps")
+browser = "Safari"
+dev_names: list[str] = []
+
+if isinstance(apps, list):
+    dev_names = [str(a) for a in apps if a]
+    browser = str(raw.get("browser", browser))
+elif isinstance(apps, dict):
+    browser = str(apps.get("browser") or raw.get("browser", browser))
+    for key in ("ide", "terminal", "notes", "music"):
+        v = apps.get(key)
+        if isinstance(v, str) and v.strip():
+            dev_names.append(v.strip())
+else:
+    browser = str(raw.get("browser", browser))
+
+print(f"YOUTUBE_URL={sh_single(youtube_url)}")
+print(f"BROWSER={sh_single(browser)}")
+print(f"WS_DEV={workspace_dev!s}")
+print(f"WS_MEDIA={workspace_media!s}")
+print(f"TRIGGER={sh_single(trigger)}")
+print(f"APPS={sh_single(' '.join(dev_names))}")
+PY
+)"
 
 echo "  ✦ Wendy is starting up..."
 echo "  ✦ Dev workspace  → $WS_DEV"
