@@ -92,10 +92,13 @@ class WakeWordDetector:
             return time.time() < self._armed_until
 
     def arm(self) -> None:
-        until = time.time() + self._arm_seconds
+        now = time.time()
         with self._lock:
-            self._armed_until = until
-        print(f"\n  🎤 Wake word «{self._word}» — armed for {self._arm_seconds:.0f}s. Clap now!\n")
+            was_armed = now < self._armed_until
+            self._armed_until = now + self._arm_seconds
+        # Vosk fires many partials per second; only announce when newly armed.
+        if not was_armed:
+            print(f"\n  🎤 Wake word «{self._word}» — armed for {self._arm_seconds:.0f}s. Clap now!\n")
 
     def disarm(self) -> None:
         with self._lock:
