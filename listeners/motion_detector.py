@@ -3,7 +3,7 @@
 Webcam motion detector (MediaPipe Hands).
 
   Record a custom gesture:
-    python3 listeners/motion_detector.py record <name>
+    python3 listeners/motion_detector.py record <name>   (from repo root)
 
   Run matching (loads motions/*.json, runs bash script from motion.actions):
     python3 listeners/motion_detector.py run
@@ -37,8 +37,18 @@ from motion_features import (
     save_template,
 )
 
+
+def _repo_root() -> Path:
+    """Directory that has config.json + wendy_daemon.py (works if listeners/ moves)."""
+    here = Path(__file__).resolve().parent
+    for p in [here, *here.parents]:
+        if (p / "config.json").is_file() and (p / "wendy_daemon.py").is_file():
+            return p
+    return here.parent
+
+
 LISTENERS_DIR = Path(__file__).resolve().parent
-ROOT = LISTENERS_DIR.parent
+ROOT = _repo_root()
 DEFAULT_ACTION = ROOT / "state_runner.py"
 SETTINGS_PATH = ROOT / "settings.json"
 

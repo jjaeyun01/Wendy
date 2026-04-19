@@ -3,7 +3,7 @@ Wendy — CNN clap classifier live test.
 
 Usage
 -----
-    python3 ml/test.py
+    python3 scripts/ml_test.py
 
 소리를 내면서 결과를 확인하세요:
     박수   → ✅ CLAP  (prob: 0.92)

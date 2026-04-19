@@ -8,9 +8,9 @@ clap+visual detector will actually fire.
 
 Setup (one-time):
     pip install vosk
-    # download the small English model and unzip into the repo root:
-    # https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.22.zip
-    # result: Wendy/vosk-model-small-en-us-0.22/
+    # Download a model zip from https://alphacephei.com/vosk/models and unzip into:
+    #   models/vosk/<model-folder>/
+    # (Unpacking next to wake_word.py at the repo root still works as a fallback.)
 """
 
 from __future__ import annotations
@@ -23,18 +23,28 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "config.json"
 
-_DEFAULT_MODEL_GLOBS = [
+# Prefer models under models/vosk/ so the repo root stays small; root is legacy.
+_VOSK_SEARCH_DIRS = (
+    ROOT / "models" / "vosk",
+    ROOT,
+)
+
+_DEFAULT_MODEL_GLOBS = (
     "vosk-model-small-en-us*",
     "vosk-model-en-us*",
-]
+    "vosk-model-small-ko*",
+    "vosk-model-ko*",
+)
 
 
 def _find_model() -> Path | None:
-    for pattern in _DEFAULT_MODEL_GLOBS:
-        matches = sorted(ROOT.glob(pattern))
-        for m in matches:
-            if m.is_dir():
-                return m
+    for base in _VOSK_SEARCH_DIRS:
+        if not base.is_dir():
+            continue
+        for pattern in _DEFAULT_MODEL_GLOBS:
+            for m in sorted(base.glob(pattern)):
+                if m.is_dir():
+                    return m
     return None
 
 
@@ -131,8 +141,8 @@ class WakeWordDetector:
         model_path = _find_model()
         if model_path is None:
             print("  ⚠  Wake word disabled — Vosk model not found.")
-            print("     Download vosk-model-small-en-us from https://alphacephei.com/vosk/models/")
-            print(f"     and unzip into: {ROOT}/")
+            print("     Download a model from https://alphacephei.com/vosk/models/")
+            print(f"     and unzip into: {ROOT / 'models' / 'vosk'}/  (or repo root as fallback)")
             ready.set()
             return
 
@@ -198,10 +208,9 @@ def _run_diagnostics() -> None:
     # 2. model
     model_path = _find_model()
     if model_path is None:
-        print("  ✗ model not found in", ROOT)
-        print("    → download vosk-model-small-en-us-0.22.zip from:")
-        print("      https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.22.zip")
-        print("    → unzip into:", ROOT)
+        print("  ✗ model not found under", ROOT / "models" / "vosk", "or", ROOT)
+        print("    → download from https://alphacephei.com/vosk/models/")
+        print("    → unzip into:", ROOT / "models" / "vosk")
         return
     print(f"  ✓ model found: {model_path.name}")
 

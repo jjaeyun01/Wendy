@@ -43,17 +43,31 @@ Wendy/
 ├── wake_word.py           # Vosk wake word → “arm” window for claps
 ├── config.json            # Single source of truth: settings, profiles, trigger
 │
+├── models/
+│   └── vosk/              # Unpacked Vosk speech models (see models/vosk/README.txt)
 ├── triggers/              # DTW gesture triggers (templates/*.json)
-├── ml/                    # Optional clap CNN (train/load; see ml/)
-├── listeners/             # Motion helpers (used by broader experiments)
+├── ml/                    # Optional clap CNN (train/collect; weights under ml/models/)
+├── listeners/             # Webcam motion experiments (motion_detector.py)
+├── motions/               # Default folder for motion JSON templates (see listeners/)
+├── scripts/               # Dev helpers: CNN live test, visual clap test
 │
-├── requirements.txt       # sounddevice, numpy, opencv-python, vosk, torch, PyQt6
+├── requirements.txt
 │
-└── archive/               # Legacy stack (curses TUI, settings.json, wendy.sh, …)
-    ├── main_tui.py        # Old config TUI (was conceptually “main.py”)
-    ├── wendy.sh           # Bash launcher for settings.json-era flow
-    └── config/            # TUI modules + documentation
+└── archive/               # Legacy curses TUI + old config package (not used by the app)
+    ├── main_tui.py
+    ├── wendy.sh
+    └── config/
 ```
+
+### Why it is organized this way
+
+- **Flat runtime at the repo root** — `wendy_app.py`, `wendy_daemon.py`, `clap_detector.py`, `wake_word.py`, and `state_runner.py` stay next to `config.json` so `Path(__file__).parent` stays the workspace root, LaunchAgent `WorkingDirectory` stays simple, and subprocess calls do not need a package layout.
+- **`models/vosk/`** — Vosk trees are large and noisy; keeping them under one folder (instead of several `vosk-model-*` directories at the top level) makes the tree easier to scan. `wake_word.py` still accepts models at the repo root for older checkouts.
+- **`ml/`** — Training data paths (`ml/data/`), code, and exported weights stay together; `.gitignore` can ignore bulky `ml/data/` without hiding application code.
+- **`triggers/`** — DTW templates and recording CLI are isolated from the hot path of the daemon.
+- **`listeners/` + `motions/`** — Optional motion matching that predates the double-clap + `config.json` flow; defaults assume templates under `motions/`.
+- **`scripts/`** — One-off diagnostics (CNN test, camera visual test) are not imported by the daemon or the app, so they live outside the “runtime” file set.
+- **`archive/`** — The old curses hub, `settings.json` workflow, and `archive/config/` Python package are kept for reference without colliding with the current `config.json`–driven design.
 
 ---
 
@@ -87,7 +101,7 @@ Install [AeroSpace](https://github.com/nikitabobko/AeroSpace) and ensure **`aero
 ### 3. Wake word (optional)
 
 1. Enable and tune **`settings.wake_word`** in **`config.json`**.
-2. Download a Vosk model (e.g. [small English](https://alphacephei.com/vosk/models)) and unzip it **inside the repo root** so a folder like `vosk-model-small-en-us-0.22/` exists next to `wake_word.py`.
+2. Download a Vosk model (e.g. [small English](https://alphacephei.com/vosk/models)) and unzip it under **`models/vosk/`** so you get e.g. `models/vosk/vosk-model-small-en-us-0.22/` (see **`models/vosk/README.txt`**). Unpacking at the **repo root** still works for older setups.
 
 If the model is missing or mic init fails, the daemon prints that **clap detection stays always active** (no “Wendy” gate).
 
