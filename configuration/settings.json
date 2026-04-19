@@ -14,8 +14,8 @@
       "bundle_id": "org.mozilla.firefox"
     },
     "notes": {
-      "name": "Notes",
-      "bundle_id": "com.apple.Notes"
+      "name": "Obsidian",
+      "bundle_id": "md.obsidian"
     },
     "terminal": {
       "name": "Terminal",
@@ -26,14 +26,27 @@
     "Tony Stark": {
       "workspaces": {
         "1": {
-          "apps": [],
+          "apps": [
+            "ide"
+          ],
           "browser_url": "",
           "music_url": ""
         },
         "2": {
-          "apps": [],
-          "browser_url": "",
-          "music_url": ""
+          "apps": [
+            "browser",
+            "notes"
+          ],
+          "browser_url": "https://my.wisc.edu/web/expanded",
+          "music_url": "",
+          "layout": {
+            "n": 2,
+            "id": 1,
+            "slots": {
+              "A": "browser",
+              "B": "notes"
+            }
+          }
         },
         "3": {
           "apps": [],
@@ -41,9 +54,11 @@
           "music_url": ""
         },
         "9": {
-          "apps": [],
+          "apps": [
+            "music"
+          ],
           "browser_url": "",
-          "music_url": ""
+          "music_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM"
         },
         "4": {
           "apps": [],
@@ -51,10 +66,8 @@
           "music_url": ""
         },
         "5": {
-          "apps": [
-            "browser"
-          ],
-          "browser_url": "https://comic.naver.com/index",
+          "apps": [],
+          "browser_url": "",
           "music_url": ""
         },
         "6": {
@@ -68,26 +81,11 @@
           "music_url": ""
         },
         "8": {
-          "apps": [
-            "ide",
-            "music",
-            "notes"
-          ],
+          "apps": [],
           "browser_url": "",
-          "music_url": "https://www.youtube.com/watch?v=BN1WwnEDWAM&list=RDBN1WwnEDWAM&start_radio=1",
-          "layout": {
-            "n": 3,
-            "id": 1,
-            "slots": {
-              "A": "ide",
-              "B": "music",
-              "C": "notes"
-            }
-          }
+          "music_url": ""
         }
-      },
-      "final_workspace": "2",
-      "final_workspace_step": "Layouts"
+      }
     }
   },
   "layout_catalog": {
